@@ -10,11 +10,22 @@ import (
 	"strings"
 	"time"
 
+	enums "github.com/jacoobjake/einvoice-api/internal/database/enums"
 	"github.com/jaswdr/faker/v2"
 	"github.com/stephenafamo/bob/types/pgtypes"
 )
 
 var defaultFaker = faker.New()
+
+func random_enums_UserStatus(f *faker.Faker, limits ...string) enums.UserStatus {
+	if f == nil {
+		f = &defaultFaker
+	}
+
+	var e enums.UserStatus
+	all := e.All()
+	return all[f.IntBetween(0, len(all)-1)]
+}
 
 func random_int64(f *faker.Faker, limits ...string) int64 {
 	if f == nil {

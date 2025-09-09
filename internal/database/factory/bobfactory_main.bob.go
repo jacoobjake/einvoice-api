@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/aarondl/opt/null"
+	enums "github.com/jacoobjake/einvoice-api/internal/database/enums"
 	models "github.com/jacoobjake/einvoice-api/internal/database/models"
 	"github.com/stephenafamo/bob/types/pgtypes"
 )
@@ -114,7 +115,7 @@ func (f *Factory) FromExistingUser(m *models.User) *UserTemplate {
 	o.Password = func() string { return m.Password }
 	o.Email = func() string { return m.Email }
 	o.EmailVerifiedAt = func() null.Val[time.Time] { return m.EmailVerifiedAt }
-	o.Status = func() string { return m.Status }
+	o.Status = func() enums.UserStatus { return m.Status }
 	o.CreatedAt = func() null.Val[time.Time] { return m.CreatedAt }
 	o.UpdatedAt = func() null.Val[time.Time] { return m.UpdatedAt }
 	o.DeletedAt = func() null.Val[time.Time] { return m.DeletedAt }

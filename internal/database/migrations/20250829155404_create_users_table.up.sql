@@ -1,3 +1,5 @@
+CREATE TYPE user_status AS ENUM ('active', 'inactive', 'suspended');
+
 CREATE TABLE IF NOT EXISTS users(
    id bigserial PRIMARY KEY,
    first_name VARCHAR (50) NOT NULL,
@@ -5,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users(
    password VARCHAR (255) NOT NULL,
    email VARCHAR (300) UNIQUE NOT NULL,
    email_verified_at TIMESTAMP WITH TIME ZONE,
-   status VARCHAR (20) NOT NULL,
+   status user_status NOT NULL DEFAULT 'active',
    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
    deleted_at TIMESTAMP WITH TIME ZONE

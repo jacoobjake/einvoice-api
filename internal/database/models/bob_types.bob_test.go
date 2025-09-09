@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 
+	enums "github.com/jacoobjake/einvoice-api/internal/database/enums"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/types/pgtypes"
 )
@@ -28,3 +29,9 @@ var _ sql.Scanner = (*pgtypes.Inet)(nil)
 
 // Make sure the type pgtypes.Inet satisfies database/sql/driver.Valuer
 var _ driver.Valuer = *new(pgtypes.Inet)
+
+// Make sure the type enums.UserStatus satisfies database/sql.Scanner
+var _ sql.Scanner = (*enums.UserStatus)(nil)
+
+// Make sure the type enums.UserStatus satisfies database/sql/driver.Valuer
+var _ driver.Valuer = *new(enums.UserStatus)

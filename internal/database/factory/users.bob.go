@@ -11,6 +11,7 @@ import (
 	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
+	enums "github.com/jacoobjake/einvoice-api/internal/database/enums"
 	models "github.com/jacoobjake/einvoice-api/internal/database/models"
 	"github.com/jaswdr/faker/v2"
 	"github.com/stephenafamo/bob"
@@ -43,7 +44,7 @@ type UserTemplate struct {
 	Password        func() string
 	Email           func() string
 	EmailVerifiedAt func() null.Val[time.Time]
-	Status          func() string
+	Status          func() enums.UserStatus
 	CreatedAt       func() null.Val[time.Time]
 	UpdatedAt       func() null.Val[time.Time]
 	DeletedAt       func() null.Val[time.Time]
@@ -237,10 +238,6 @@ func ensureCreatableUser(m *models.UserSetter) {
 	if !(m.Email.IsValue()) {
 		val := random_string(nil, "300")
 		m.Email = omit.From(val)
-	}
-	if !(m.Status.IsValue()) {
-		val := random_string(nil, "20")
-		m.Status = omit.From(val)
 	}
 }
 
@@ -604,14 +601,14 @@ func (m userMods) RandomEmailVerifiedAtNotNull(f *faker.Faker) UserMod {
 }
 
 // Set the model columns to this value
-func (m userMods) Status(val string) UserMod {
+func (m userMods) Status(val enums.UserStatus) UserMod {
 	return UserModFunc(func(_ context.Context, o *UserTemplate) {
-		o.Status = func() string { return val }
+		o.Status = func() enums.UserStatus { return val }
 	})
 }
 
 // Set the Column from the function
-func (m userMods) StatusFunc(f func() string) UserMod {
+func (m userMods) StatusFunc(f func() enums.UserStatus) UserMod {
 	return UserModFunc(func(_ context.Context, o *UserTemplate) {
 		o.Status = f
 	})
@@ -628,8 +625,8 @@ func (m userMods) UnsetStatus() UserMod {
 // if faker is nil, a default faker is used
 func (m userMods) RandomStatus(f *faker.Faker) UserMod {
 	return UserModFunc(func(_ context.Context, o *UserTemplate) {
-		o.Status = func() string {
-			return random_string(f, "20")
+		o.Status = func() enums.UserStatus {
+			return random_enums_UserStatus(f)
 		}
 	})
 }

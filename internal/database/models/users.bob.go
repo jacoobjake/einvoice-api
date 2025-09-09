@@ -12,6 +12,7 @@ import (
 	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
+	enums "github.com/jacoobjake/einvoice-api/internal/database/enums"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dialect"
@@ -32,7 +33,7 @@ type User struct {
 	Password        string              `db:"password" `
 	Email           string              `db:"email" `
 	EmailVerifiedAt null.Val[time.Time] `db:"email_verified_at" `
-	Status          string              `db:"status" `
+	Status          enums.UserStatus    `db:"status" `
 	CreatedAt       null.Val[time.Time] `db:"created_at" `
 	UpdatedAt       null.Val[time.Time] `db:"updated_at" `
 	DeletedAt       null.Val[time.Time] `db:"deleted_at" `
@@ -102,16 +103,16 @@ func (userColumns) AliasedAs(alias string) userColumns {
 // All values are optional, and do not have to be set
 // Generated columns are not included
 type UserSetter struct {
-	ID              omit.Val[int64]         `db:"id,pk" `
-	FirstName       omit.Val[string]        `db:"first_name" `
-	LastName        omit.Val[string]        `db:"last_name" `
-	Password        omit.Val[string]        `db:"password" `
-	Email           omit.Val[string]        `db:"email" `
-	EmailVerifiedAt omitnull.Val[time.Time] `db:"email_verified_at" `
-	Status          omit.Val[string]        `db:"status" `
-	CreatedAt       omitnull.Val[time.Time] `db:"created_at" `
-	UpdatedAt       omitnull.Val[time.Time] `db:"updated_at" `
-	DeletedAt       omitnull.Val[time.Time] `db:"deleted_at" `
+	ID              omit.Val[int64]            `db:"id,pk" `
+	FirstName       omit.Val[string]           `db:"first_name" `
+	LastName        omit.Val[string]           `db:"last_name" `
+	Password        omit.Val[string]           `db:"password" `
+	Email           omit.Val[string]           `db:"email" `
+	EmailVerifiedAt omitnull.Val[time.Time]    `db:"email_verified_at" `
+	Status          omit.Val[enums.UserStatus] `db:"status" `
+	CreatedAt       omitnull.Val[time.Time]    `db:"created_at" `
+	UpdatedAt       omitnull.Val[time.Time]    `db:"updated_at" `
+	DeletedAt       omitnull.Val[time.Time]    `db:"deleted_at" `
 }
 
 func (s UserSetter) SetColumns() []string {
@@ -747,7 +748,7 @@ type userWhere[Q psql.Filterable] struct {
 	Password        psql.WhereMod[Q, string]
 	Email           psql.WhereMod[Q, string]
 	EmailVerifiedAt psql.WhereNullMod[Q, time.Time]
-	Status          psql.WhereMod[Q, string]
+	Status          psql.WhereMod[Q, enums.UserStatus]
 	CreatedAt       psql.WhereNullMod[Q, time.Time]
 	UpdatedAt       psql.WhereNullMod[Q, time.Time]
 	DeletedAt       psql.WhereNullMod[Q, time.Time]
@@ -765,7 +766,7 @@ func buildUserWhere[Q psql.Filterable](cols userColumns) userWhere[Q] {
 		Password:        psql.Where[Q, string](cols.Password),
 		Email:           psql.Where[Q, string](cols.Email),
 		EmailVerifiedAt: psql.WhereNull[Q, time.Time](cols.EmailVerifiedAt),
-		Status:          psql.Where[Q, string](cols.Status),
+		Status:          psql.Where[Q, enums.UserStatus](cols.Status),
 		CreatedAt:       psql.WhereNull[Q, time.Time](cols.CreatedAt),
 		UpdatedAt:       psql.WhereNull[Q, time.Time](cols.UpdatedAt),
 		DeletedAt:       psql.WhereNull[Q, time.Time](cols.DeletedAt),

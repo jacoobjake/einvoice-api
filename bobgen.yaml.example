@@ -27,5 +27,6 @@ plugins:
   joins:
     disabled: false
 psql:
+  dsn: "postgres://user:pass@host:port/dbname"
   except:
     schema_migrations:

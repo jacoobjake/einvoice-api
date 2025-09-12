@@ -44,7 +44,7 @@ type UserTemplate struct {
 	Password        func() string
 	Email           func() string
 	EmailVerifiedAt func() null.Val[time.Time]
-	Status          func() enums.UserStatus
+	Status          func() enums.UserStatuses
 	CreatedAt       func() null.Val[time.Time]
 	UpdatedAt       func() null.Val[time.Time]
 	DeletedAt       func() null.Val[time.Time]
@@ -84,7 +84,7 @@ func (t UserTemplate) setModelRels(o *models.User) {
 		for _, r := range t.r.AuthTokens {
 			related := r.o.BuildMany(r.number)
 			for _, rel := range related {
-				rel.UserID = null.From(o.ID) // h2
+				rel.UserID = o.ID // h2
 				rel.R.User = o
 			}
 			rel = append(rel, related...)
@@ -97,7 +97,7 @@ func (t UserTemplate) setModelRels(o *models.User) {
 		for _, r := range t.r.FailedLogins {
 			related := r.o.BuildMany(r.number)
 			for _, rel := range related {
-				rel.UserID = null.From(o.ID) // h2
+				rel.UserID = o.ID // h2
 				rel.R.User = o
 			}
 			rel = append(rel, related...)
@@ -601,14 +601,14 @@ func (m userMods) RandomEmailVerifiedAtNotNull(f *faker.Faker) UserMod {
 }
 
 // Set the model columns to this value
-func (m userMods) Status(val enums.UserStatus) UserMod {
+func (m userMods) Status(val enums.UserStatuses) UserMod {
 	return UserModFunc(func(_ context.Context, o *UserTemplate) {
-		o.Status = func() enums.UserStatus { return val }
+		o.Status = func() enums.UserStatuses { return val }
 	})
 }
 
 // Set the Column from the function
-func (m userMods) StatusFunc(f func() enums.UserStatus) UserMod {
+func (m userMods) StatusFunc(f func() enums.UserStatuses) UserMod {
 	return UserModFunc(func(_ context.Context, o *UserTemplate) {
 		o.Status = f
 	})
@@ -625,8 +625,8 @@ func (m userMods) UnsetStatus() UserMod {
 // if faker is nil, a default faker is used
 func (m userMods) RandomStatus(f *faker.Faker) UserMod {
 	return UserModFunc(func(_ context.Context, o *UserTemplate) {
-		o.Status = func() enums.UserStatus {
-			return random_enums_UserStatus(f)
+		o.Status = func() enums.UserStatuses {
+			return random_enums_UserStatuses(f)
 		}
 	})
 }

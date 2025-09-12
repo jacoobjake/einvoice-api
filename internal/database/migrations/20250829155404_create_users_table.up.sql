@@ -1,4 +1,4 @@
-CREATE TYPE user_status AS ENUM ('active', 'inactive', 'suspended');
+CREATE TYPE user_statuses AS ENUM ('active', 'inactive', 'suspended');
 
 CREATE TABLE IF NOT EXISTS users(
    id bigserial PRIMARY KEY,
@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users(
    password VARCHAR (255) NOT NULL,
    email VARCHAR (300) UNIQUE NOT NULL,
    email_verified_at TIMESTAMP WITH TIME ZONE,
-   status user_status NOT NULL DEFAULT 'active',
+   status user_statuses NOT NULL DEFAULT 'active',
    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
    deleted_at TIMESTAMP WITH TIME ZONE
@@ -33,17 +33,19 @@ EXECUTE FUNCTION soft_delete();
 -- Failed Logins Table
 CREATE TABLE IF NOT EXISTS failed_logins(
    id bigserial PRIMARY KEY,
-   user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+   user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
    ip_address INET NOT NULL,
    attempted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TYPE auth_token_types AS ENUM ('access', 'refresh', 'reset_password', 'email_verification');
+
 -- Auth Tokens Table
 CREATE TABLE IF NOT EXISTS auth_tokens(
    id bigserial PRIMARY KEY,
-   user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
-   type VARCHAR(20),
-   token VARCHAR(255),
+   user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+   type auth_token_types NOT NULL,
+   token VARCHAR(255) NOT NULL,
    expire_at TIMESTAMP WITH TIME ZONE,
    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

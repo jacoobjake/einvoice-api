@@ -8,6 +8,85 @@ import (
 	"fmt"
 )
 
+// Enum values for AuthTokenTypes
+const (
+	AuthTokenTypesAccess            AuthTokenTypes = "access"
+	AuthTokenTypesRefresh           AuthTokenTypes = "refresh"
+	AuthTokenTypesResetPassword     AuthTokenTypes = "reset_password"
+	AuthTokenTypesEmailVerification AuthTokenTypes = "email_verification"
+)
+
+func AllAuthTokenTypes() []AuthTokenTypes {
+	return []AuthTokenTypes{
+		AuthTokenTypesAccess,
+		AuthTokenTypesRefresh,
+		AuthTokenTypesResetPassword,
+		AuthTokenTypesEmailVerification,
+	}
+}
+
+type AuthTokenTypes string
+
+func (e AuthTokenTypes) String() string {
+	return string(e)
+}
+
+func (e AuthTokenTypes) Valid() bool {
+	switch e {
+	case AuthTokenTypesAccess,
+		AuthTokenTypesRefresh,
+		AuthTokenTypesResetPassword,
+		AuthTokenTypesEmailVerification:
+		return true
+	default:
+		return false
+	}
+}
+
+// useful when testing in other packages
+func (e AuthTokenTypes) All() []AuthTokenTypes {
+	return AllAuthTokenTypes()
+}
+
+func (e AuthTokenTypes) MarshalText() ([]byte, error) {
+	return []byte(e), nil
+}
+
+func (e *AuthTokenTypes) UnmarshalText(text []byte) error {
+	return e.Scan(text)
+}
+
+func (e AuthTokenTypes) MarshalBinary() ([]byte, error) {
+	return []byte(e), nil
+}
+
+func (e *AuthTokenTypes) UnmarshalBinary(data []byte) error {
+	return e.Scan(data)
+}
+
+func (e AuthTokenTypes) Value() (driver.Value, error) {
+	return string(e), nil
+}
+
+func (e *AuthTokenTypes) Scan(value any) error {
+	switch x := value.(type) {
+	case string:
+		*e = AuthTokenTypes(x)
+	case []byte:
+		*e = AuthTokenTypes(x)
+	case nil:
+		return fmt.Errorf("cannot nil into AuthTokenTypes")
+	default:
+		return fmt.Errorf("cannot scan type %T: %v", value, value)
+	}
+
+	if !e.Valid() {
+		return fmt.Errorf("invalid AuthTokenTypes value: %s", *e)
+	}
+
+	return nil
+}
+
 // Enum values for UserStatus
 const (
 	UserStatusActive    UserStatus = "active"
@@ -79,6 +158,82 @@ func (e *UserStatus) Scan(value any) error {
 
 	if !e.Valid() {
 		return fmt.Errorf("invalid UserStatus value: %s", *e)
+	}
+
+	return nil
+}
+
+// Enum values for UserStatuses
+const (
+	UserStatusesActive    UserStatuses = "active"
+	UserStatusesInactive  UserStatuses = "inactive"
+	UserStatusesSuspended UserStatuses = "suspended"
+)
+
+func AllUserStatuses() []UserStatuses {
+	return []UserStatuses{
+		UserStatusesActive,
+		UserStatusesInactive,
+		UserStatusesSuspended,
+	}
+}
+
+type UserStatuses string
+
+func (e UserStatuses) String() string {
+	return string(e)
+}
+
+func (e UserStatuses) Valid() bool {
+	switch e {
+	case UserStatusesActive,
+		UserStatusesInactive,
+		UserStatusesSuspended:
+		return true
+	default:
+		return false
+	}
+}
+
+// useful when testing in other packages
+func (e UserStatuses) All() []UserStatuses {
+	return AllUserStatuses()
+}
+
+func (e UserStatuses) MarshalText() ([]byte, error) {
+	return []byte(e), nil
+}
+
+func (e *UserStatuses) UnmarshalText(text []byte) error {
+	return e.Scan(text)
+}
+
+func (e UserStatuses) MarshalBinary() ([]byte, error) {
+	return []byte(e), nil
+}
+
+func (e *UserStatuses) UnmarshalBinary(data []byte) error {
+	return e.Scan(data)
+}
+
+func (e UserStatuses) Value() (driver.Value, error) {
+	return string(e), nil
+}
+
+func (e *UserStatuses) Scan(value any) error {
+	switch x := value.(type) {
+	case string:
+		*e = UserStatuses(x)
+	case []byte:
+		*e = UserStatuses(x)
+	case nil:
+		return fmt.Errorf("cannot nil into UserStatuses")
+	default:
+		return fmt.Errorf("cannot scan type %T: %v", value, value)
+	}
+
+	if !e.Valid() {
+		return fmt.Errorf("invalid UserStatuses value: %s", *e)
 	}
 
 	return nil

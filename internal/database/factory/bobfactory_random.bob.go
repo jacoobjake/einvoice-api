@@ -17,12 +17,22 @@ import (
 
 var defaultFaker = faker.New()
 
-func random_enums_UserStatus(f *faker.Faker, limits ...string) enums.UserStatus {
+func random_enums_AuthTokenTypes(f *faker.Faker, limits ...string) enums.AuthTokenTypes {
 	if f == nil {
 		f = &defaultFaker
 	}
 
-	var e enums.UserStatus
+	var e enums.AuthTokenTypes
+	all := e.All()
+	return all[f.IntBetween(0, len(all)-1)]
+}
+
+func random_enums_UserStatuses(f *faker.Faker, limits ...string) enums.UserStatuses {
+	if f == nil {
+		f = &defaultFaker
+	}
+
+	var e enums.UserStatuses
 	all := e.All()
 	return all[f.IntBetween(0, len(all)-1)]
 }

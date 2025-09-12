@@ -27,9 +27,9 @@ var FailedLogins = Table[
 		UserID: column{
 			Name:      "user_id",
 			DBType:    "bigint",
-			Default:   "NULL",
+			Default:   "",
 			Comment:   "",
-			Nullable:  true,
+			Nullable:  false,
 			Generated: false,
 			AutoIncr:  false,
 		},

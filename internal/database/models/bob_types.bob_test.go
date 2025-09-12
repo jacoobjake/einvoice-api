@@ -24,14 +24,20 @@ var _ bob.HookableType = &FailedLogin{}
 // Make sure the type User runs hooks after queries
 var _ bob.HookableType = &User{}
 
+// Make sure the type enums.AuthTokenTypes satisfies database/sql.Scanner
+var _ sql.Scanner = (*enums.AuthTokenTypes)(nil)
+
+// Make sure the type enums.AuthTokenTypes satisfies database/sql/driver.Valuer
+var _ driver.Valuer = *new(enums.AuthTokenTypes)
+
 // Make sure the type pgtypes.Inet satisfies database/sql.Scanner
 var _ sql.Scanner = (*pgtypes.Inet)(nil)
 
 // Make sure the type pgtypes.Inet satisfies database/sql/driver.Valuer
 var _ driver.Valuer = *new(pgtypes.Inet)
 
-// Make sure the type enums.UserStatus satisfies database/sql.Scanner
-var _ sql.Scanner = (*enums.UserStatus)(nil)
+// Make sure the type enums.UserStatuses satisfies database/sql.Scanner
+var _ sql.Scanner = (*enums.UserStatuses)(nil)
 
-// Make sure the type enums.UserStatus satisfies database/sql/driver.Valuer
-var _ driver.Valuer = *new(enums.UserStatus)
+// Make sure the type enums.UserStatuses satisfies database/sql/driver.Valuer
+var _ driver.Valuer = *new(enums.UserStatuses)

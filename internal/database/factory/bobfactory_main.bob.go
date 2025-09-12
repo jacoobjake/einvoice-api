@@ -43,9 +43,9 @@ func (f *Factory) FromExistingAuthToken(m *models.AuthToken) *AuthTokenTemplate 
 	o := &AuthTokenTemplate{f: f, alreadyPersisted: true}
 
 	o.ID = func() int64 { return m.ID }
-	o.UserID = func() null.Val[int64] { return m.UserID }
-	o.Type = func() null.Val[string] { return m.Type }
-	o.Token = func() null.Val[string] { return m.Token }
+	o.UserID = func() int64 { return m.UserID }
+	o.Type = func() enums.AuthTokenTypes { return m.Type }
+	o.Token = func() string { return m.Token }
 	o.ExpireAt = func() null.Val[time.Time] { return m.ExpireAt }
 	o.CreatedAt = func() null.Val[time.Time] { return m.CreatedAt }
 	o.UpdatedAt = func() null.Val[time.Time] { return m.UpdatedAt }
@@ -78,7 +78,7 @@ func (f *Factory) FromExistingFailedLogin(m *models.FailedLogin) *FailedLoginTem
 	o := &FailedLoginTemplate{f: f, alreadyPersisted: true}
 
 	o.ID = func() int64 { return m.ID }
-	o.UserID = func() null.Val[int64] { return m.UserID }
+	o.UserID = func() int64 { return m.UserID }
 	o.IPAddress = func() pgtypes.Inet { return m.IPAddress }
 	o.AttemptedAt = func() null.Val[time.Time] { return m.AttemptedAt }
 
@@ -115,7 +115,7 @@ func (f *Factory) FromExistingUser(m *models.User) *UserTemplate {
 	o.Password = func() string { return m.Password }
 	o.Email = func() string { return m.Email }
 	o.EmailVerifiedAt = func() null.Val[time.Time] { return m.EmailVerifiedAt }
-	o.Status = func() enums.UserStatus { return m.Status }
+	o.Status = func() enums.UserStatuses { return m.Status }
 	o.CreatedAt = func() null.Val[time.Time] { return m.CreatedAt }
 	o.UpdatedAt = func() null.Val[time.Time] { return m.UpdatedAt }
 	o.DeletedAt = func() null.Val[time.Time] { return m.DeletedAt }

@@ -27,7 +27,7 @@ import (
 // FailedLogin is an object representing the database table.
 type FailedLogin struct {
 	ID          int64               `db:"id,pk" `
-	UserID      null.Val[int64]     `db:"user_id" `
+	UserID      int64               `db:"user_id" `
 	IPAddress   pgtypes.Inet        `db:"ip_address" `
 	AttemptedAt null.Val[time.Time] `db:"attempted_at" `
 
@@ -84,7 +84,7 @@ func (failedLoginColumns) AliasedAs(alias string) failedLoginColumns {
 // Generated columns are not included
 type FailedLoginSetter struct {
 	ID          omit.Val[int64]         `db:"id,pk" `
-	UserID      omitnull.Val[int64]     `db:"user_id" `
+	UserID      omit.Val[int64]         `db:"user_id" `
 	IPAddress   omit.Val[pgtypes.Inet]  `db:"ip_address" `
 	AttemptedAt omitnull.Val[time.Time] `db:"attempted_at" `
 }
@@ -94,7 +94,7 @@ func (s FailedLoginSetter) SetColumns() []string {
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
-	if !s.UserID.IsUnset() {
+	if s.UserID.IsValue() {
 		vals = append(vals, "user_id")
 	}
 	if s.IPAddress.IsValue() {
@@ -110,8 +110,8 @@ func (s FailedLoginSetter) Overwrite(t *FailedLogin) {
 	if s.ID.IsValue() {
 		t.ID = s.ID.MustGet()
 	}
-	if !s.UserID.IsUnset() {
-		t.UserID = s.UserID.MustGetNull()
+	if s.UserID.IsValue() {
+		t.UserID = s.UserID.MustGet()
 	}
 	if s.IPAddress.IsValue() {
 		t.IPAddress = s.IPAddress.MustGet()
@@ -134,8 +134,8 @@ func (s *FailedLoginSetter) Apply(q *dialect.InsertQuery) {
 			vals[0] = psql.Raw("DEFAULT")
 		}
 
-		if !s.UserID.IsUnset() {
-			vals[1] = psql.Arg(s.UserID.MustGetNull())
+		if s.UserID.IsValue() {
+			vals[1] = psql.Arg(s.UserID.MustGet())
 		} else {
 			vals[1] = psql.Raw("DEFAULT")
 		}
@@ -170,7 +170,7 @@ func (s FailedLoginSetter) Expressions(prefix ...string) []bob.Expression {
 		}})
 	}
 
-	if !s.UserID.IsUnset() {
+	if s.UserID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "user_id")...),
 			psql.Arg(s.UserID),
@@ -425,7 +425,7 @@ func (o *FailedLogin) User(mods ...bob.Mod[*dialect.SelectQuery]) UsersQuery {
 }
 
 func (os FailedLoginSlice) User(mods ...bob.Mod[*dialect.SelectQuery]) UsersQuery {
-	pkUserID := make(pgtypes.Array[null.Val[int64]], 0, len(os))
+	pkUserID := make(pgtypes.Array[int64], 0, len(os))
 	for _, o := range os {
 		if o == nil {
 			continue
@@ -443,7 +443,7 @@ func (os FailedLoginSlice) User(mods ...bob.Mod[*dialect.SelectQuery]) UsersQuer
 
 func attachFailedLoginUser0(ctx context.Context, exec bob.Executor, count int, failedLogin0 *FailedLogin, user1 *User) (*FailedLogin, error) {
 	setter := &FailedLoginSetter{
-		UserID: omitnull.From(user1.ID),
+		UserID: omit.From(user1.ID),
 	}
 
 	err := failedLogin0.Update(ctx, exec, setter)
@@ -491,7 +491,7 @@ func (failedLogin0 *FailedLogin) AttachUser(ctx context.Context, exec bob.Execut
 
 type failedLoginWhere[Q psql.Filterable] struct {
 	ID          psql.WhereMod[Q, int64]
-	UserID      psql.WhereNullMod[Q, int64]
+	UserID      psql.WhereMod[Q, int64]
 	IPAddress   psql.WhereMod[Q, pgtypes.Inet]
 	AttemptedAt psql.WhereNullMod[Q, time.Time]
 }
@@ -503,7 +503,7 @@ func (failedLoginWhere[Q]) AliasedAs(alias string) failedLoginWhere[Q] {
 func buildFailedLoginWhere[Q psql.Filterable](cols failedLoginColumns) failedLoginWhere[Q] {
 	return failedLoginWhere[Q]{
 		ID:          psql.Where[Q, int64](cols.ID),
-		UserID:      psql.WhereNull[Q, int64](cols.UserID),
+		UserID:      psql.Where[Q, int64](cols.UserID),
 		IPAddress:   psql.Where[Q, pgtypes.Inet](cols.IPAddress),
 		AttemptedAt: psql.WhereNull[Q, time.Time](cols.AttemptedAt),
 	}
@@ -610,11 +610,8 @@ func (os FailedLoginSlice) LoadUser(ctx context.Context, exec bob.Executor, mods
 		}
 
 		for _, rel := range users {
-			if !o.UserID.IsValue() {
-				continue
-			}
 
-			if !(o.UserID.IsValue() && o.UserID.MustGet() == rel.ID) {
+			if !(o.UserID == rel.ID) {
 				continue
 			}
 

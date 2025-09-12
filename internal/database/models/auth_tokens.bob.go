@@ -12,6 +12,7 @@ import (
 	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
+	enums "github.com/jacoobjake/einvoice-api/internal/database/enums"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/dialect"
@@ -26,13 +27,13 @@ import (
 
 // AuthToken is an object representing the database table.
 type AuthToken struct {
-	ID        int64               `db:"id,pk" `
-	UserID    null.Val[int64]     `db:"user_id" `
-	Type      null.Val[string]    `db:"type" `
-	Token     null.Val[string]    `db:"token" `
-	ExpireAt  null.Val[time.Time] `db:"expire_at" `
-	CreatedAt null.Val[time.Time] `db:"created_at" `
-	UpdatedAt null.Val[time.Time] `db:"updated_at" `
+	ID        int64                `db:"id,pk" `
+	UserID    int64                `db:"user_id" `
+	Type      enums.AuthTokenTypes `db:"type" `
+	Token     string               `db:"token" `
+	ExpireAt  null.Val[time.Time]  `db:"expire_at" `
+	CreatedAt null.Val[time.Time]  `db:"created_at" `
+	UpdatedAt null.Val[time.Time]  `db:"updated_at" `
 
 	R authTokenR `db:"-" `
 }
@@ -92,13 +93,13 @@ func (authTokenColumns) AliasedAs(alias string) authTokenColumns {
 // All values are optional, and do not have to be set
 // Generated columns are not included
 type AuthTokenSetter struct {
-	ID        omit.Val[int64]         `db:"id,pk" `
-	UserID    omitnull.Val[int64]     `db:"user_id" `
-	Type      omitnull.Val[string]    `db:"type" `
-	Token     omitnull.Val[string]    `db:"token" `
-	ExpireAt  omitnull.Val[time.Time] `db:"expire_at" `
-	CreatedAt omitnull.Val[time.Time] `db:"created_at" `
-	UpdatedAt omitnull.Val[time.Time] `db:"updated_at" `
+	ID        omit.Val[int64]                `db:"id,pk" `
+	UserID    omit.Val[int64]                `db:"user_id" `
+	Type      omit.Val[enums.AuthTokenTypes] `db:"type" `
+	Token     omit.Val[string]               `db:"token" `
+	ExpireAt  omitnull.Val[time.Time]        `db:"expire_at" `
+	CreatedAt omitnull.Val[time.Time]        `db:"created_at" `
+	UpdatedAt omitnull.Val[time.Time]        `db:"updated_at" `
 }
 
 func (s AuthTokenSetter) SetColumns() []string {
@@ -106,13 +107,13 @@ func (s AuthTokenSetter) SetColumns() []string {
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
-	if !s.UserID.IsUnset() {
+	if s.UserID.IsValue() {
 		vals = append(vals, "user_id")
 	}
-	if !s.Type.IsUnset() {
+	if s.Type.IsValue() {
 		vals = append(vals, "type")
 	}
-	if !s.Token.IsUnset() {
+	if s.Token.IsValue() {
 		vals = append(vals, "token")
 	}
 	if !s.ExpireAt.IsUnset() {
@@ -131,14 +132,14 @@ func (s AuthTokenSetter) Overwrite(t *AuthToken) {
 	if s.ID.IsValue() {
 		t.ID = s.ID.MustGet()
 	}
-	if !s.UserID.IsUnset() {
-		t.UserID = s.UserID.MustGetNull()
+	if s.UserID.IsValue() {
+		t.UserID = s.UserID.MustGet()
 	}
-	if !s.Type.IsUnset() {
-		t.Type = s.Type.MustGetNull()
+	if s.Type.IsValue() {
+		t.Type = s.Type.MustGet()
 	}
-	if !s.Token.IsUnset() {
-		t.Token = s.Token.MustGetNull()
+	if s.Token.IsValue() {
+		t.Token = s.Token.MustGet()
 	}
 	if !s.ExpireAt.IsUnset() {
 		t.ExpireAt = s.ExpireAt.MustGetNull()
@@ -164,20 +165,20 @@ func (s *AuthTokenSetter) Apply(q *dialect.InsertQuery) {
 			vals[0] = psql.Raw("DEFAULT")
 		}
 
-		if !s.UserID.IsUnset() {
-			vals[1] = psql.Arg(s.UserID.MustGetNull())
+		if s.UserID.IsValue() {
+			vals[1] = psql.Arg(s.UserID.MustGet())
 		} else {
 			vals[1] = psql.Raw("DEFAULT")
 		}
 
-		if !s.Type.IsUnset() {
-			vals[2] = psql.Arg(s.Type.MustGetNull())
+		if s.Type.IsValue() {
+			vals[2] = psql.Arg(s.Type.MustGet())
 		} else {
 			vals[2] = psql.Raw("DEFAULT")
 		}
 
-		if !s.Token.IsUnset() {
-			vals[3] = psql.Arg(s.Token.MustGetNull())
+		if s.Token.IsValue() {
+			vals[3] = psql.Arg(s.Token.MustGet())
 		} else {
 			vals[3] = psql.Raw("DEFAULT")
 		}
@@ -218,21 +219,21 @@ func (s AuthTokenSetter) Expressions(prefix ...string) []bob.Expression {
 		}})
 	}
 
-	if !s.UserID.IsUnset() {
+	if s.UserID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "user_id")...),
 			psql.Arg(s.UserID),
 		}})
 	}
 
-	if !s.Type.IsUnset() {
+	if s.Type.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "type")...),
 			psql.Arg(s.Type),
 		}})
 	}
 
-	if !s.Token.IsUnset() {
+	if s.Token.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "token")...),
 			psql.Arg(s.Token),
@@ -494,7 +495,7 @@ func (o *AuthToken) User(mods ...bob.Mod[*dialect.SelectQuery]) UsersQuery {
 }
 
 func (os AuthTokenSlice) User(mods ...bob.Mod[*dialect.SelectQuery]) UsersQuery {
-	pkUserID := make(pgtypes.Array[null.Val[int64]], 0, len(os))
+	pkUserID := make(pgtypes.Array[int64], 0, len(os))
 	for _, o := range os {
 		if o == nil {
 			continue
@@ -512,7 +513,7 @@ func (os AuthTokenSlice) User(mods ...bob.Mod[*dialect.SelectQuery]) UsersQuery 
 
 func attachAuthTokenUser0(ctx context.Context, exec bob.Executor, count int, authToken0 *AuthToken, user1 *User) (*AuthToken, error) {
 	setter := &AuthTokenSetter{
-		UserID: omitnull.From(user1.ID),
+		UserID: omit.From(user1.ID),
 	}
 
 	err := authToken0.Update(ctx, exec, setter)
@@ -560,9 +561,9 @@ func (authToken0 *AuthToken) AttachUser(ctx context.Context, exec bob.Executor, 
 
 type authTokenWhere[Q psql.Filterable] struct {
 	ID        psql.WhereMod[Q, int64]
-	UserID    psql.WhereNullMod[Q, int64]
-	Type      psql.WhereNullMod[Q, string]
-	Token     psql.WhereNullMod[Q, string]
+	UserID    psql.WhereMod[Q, int64]
+	Type      psql.WhereMod[Q, enums.AuthTokenTypes]
+	Token     psql.WhereMod[Q, string]
 	ExpireAt  psql.WhereNullMod[Q, time.Time]
 	CreatedAt psql.WhereNullMod[Q, time.Time]
 	UpdatedAt psql.WhereNullMod[Q, time.Time]
@@ -575,9 +576,9 @@ func (authTokenWhere[Q]) AliasedAs(alias string) authTokenWhere[Q] {
 func buildAuthTokenWhere[Q psql.Filterable](cols authTokenColumns) authTokenWhere[Q] {
 	return authTokenWhere[Q]{
 		ID:        psql.Where[Q, int64](cols.ID),
-		UserID:    psql.WhereNull[Q, int64](cols.UserID),
-		Type:      psql.WhereNull[Q, string](cols.Type),
-		Token:     psql.WhereNull[Q, string](cols.Token),
+		UserID:    psql.Where[Q, int64](cols.UserID),
+		Type:      psql.Where[Q, enums.AuthTokenTypes](cols.Type),
+		Token:     psql.Where[Q, string](cols.Token),
 		ExpireAt:  psql.WhereNull[Q, time.Time](cols.ExpireAt),
 		CreatedAt: psql.WhereNull[Q, time.Time](cols.CreatedAt),
 		UpdatedAt: psql.WhereNull[Q, time.Time](cols.UpdatedAt),
@@ -685,11 +686,8 @@ func (os AuthTokenSlice) LoadUser(ctx context.Context, exec bob.Executor, mods .
 		}
 
 		for _, rel := range users {
-			if !o.UserID.IsValue() {
-				continue
-			}
 
-			if !(o.UserID.IsValue() && o.UserID.MustGet() == rel.ID) {
+			if !(o.UserID == rel.ID) {
 				continue
 			}
 

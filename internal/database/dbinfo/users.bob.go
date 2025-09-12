@@ -71,8 +71,8 @@ var Users = Table[
 		},
 		Status: column{
 			Name:      "status",
-			DBType:    "public.user_status",
-			Default:   "'active'::user_status",
+			DBType:    "public.user_statuses",
+			Default:   "'active'::user_statuses",
 			Comment:   "",
 			Nullable:  false,
 			Generated: false,

@@ -5,6 +5,6 @@ import (
 	"github.com/stephenafamo/bob"
 )
 
-func RegisterRoutes(r *gin.Engine, db *bob.DB) {
+func RegisterRoutes(r *gin.Engine, db bob.DB) {
 
 }

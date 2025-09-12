@@ -11,6 +11,7 @@ import (
 	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
+	enums "github.com/jacoobjake/einvoice-api/internal/database/enums"
 	models "github.com/jacoobjake/einvoice-api/internal/database/models"
 	"github.com/jaswdr/faker/v2"
 	"github.com/stephenafamo/bob"
@@ -38,9 +39,9 @@ func (mods AuthTokenModSlice) Apply(ctx context.Context, n *AuthTokenTemplate) {
 // all columns are optional and should be set by mods
 type AuthTokenTemplate struct {
 	ID        func() int64
-	UserID    func() null.Val[int64]
-	Type      func() null.Val[string]
-	Token     func() null.Val[string]
+	UserID    func() int64
+	Type      func() enums.AuthTokenTypes
+	Token     func() string
 	ExpireAt  func() null.Val[time.Time]
 	CreatedAt func() null.Val[time.Time]
 	UpdatedAt func() null.Val[time.Time]
@@ -72,7 +73,7 @@ func (t AuthTokenTemplate) setModelRels(o *models.AuthToken) {
 	if t.r.User != nil {
 		rel := t.r.User.o.Build()
 		rel.R.AuthTokens = append(rel.R.AuthTokens, o)
-		o.UserID = null.From(rel.ID) // h2
+		o.UserID = rel.ID // h2
 		o.R.User = rel
 	}
 }
@@ -88,15 +89,15 @@ func (o AuthTokenTemplate) BuildSetter() *models.AuthTokenSetter {
 	}
 	if o.UserID != nil {
 		val := o.UserID()
-		m.UserID = omitnull.FromNull(val)
+		m.UserID = omit.From(val)
 	}
 	if o.Type != nil {
 		val := o.Type()
-		m.Type = omitnull.FromNull(val)
+		m.Type = omit.From(val)
 	}
 	if o.Token != nil {
 		val := o.Token()
-		m.Token = omitnull.FromNull(val)
+		m.Token = omit.From(val)
 	}
 	if o.ExpireAt != nil {
 		val := o.ExpireAt()
@@ -173,6 +174,18 @@ func (o AuthTokenTemplate) BuildMany(number int) models.AuthTokenSlice {
 }
 
 func ensureCreatableAuthToken(m *models.AuthTokenSetter) {
+	if !(m.UserID.IsValue()) {
+		val := random_int64(nil)
+		m.UserID = omit.From(val)
+	}
+	if !(m.Type.IsValue()) {
+		val := random_enums_AuthTokenTypes(nil)
+		m.Type = omit.From(val)
+	}
+	if !(m.Token.IsValue()) {
+		val := random_string(nil, "255")
+		m.Token = omit.From(val)
+	}
 }
 
 // insertOptRels creates and inserts any optional the relationships on *models.AuthToken
@@ -180,25 +193,6 @@ func ensureCreatableAuthToken(m *models.AuthTokenSetter) {
 // any required relationship should have already exist on the model
 func (o *AuthTokenTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *models.AuthToken) error {
 	var err error
-
-	isUserDone, _ := authTokenRelUserCtx.Value(ctx)
-	if !isUserDone && o.r.User != nil {
-		ctx = authTokenRelUserCtx.WithValue(ctx, true)
-		if o.r.User.o.alreadyPersisted {
-			m.R.User = o.r.User.o.Build()
-		} else {
-			var rel0 *models.User
-			rel0, err = o.r.User.o.Create(ctx, exec)
-			if err != nil {
-				return err
-			}
-			err = m.AttachUser(ctx, exec, rel0)
-			if err != nil {
-				return err
-			}
-		}
-
-	}
 
 	return err
 }
@@ -210,10 +204,29 @@ func (o *AuthTokenTemplate) Create(ctx context.Context, exec bob.Executor) (*mod
 	opt := o.BuildSetter()
 	ensureCreatableAuthToken(opt)
 
+	if o.r.User == nil {
+		AuthTokenMods.WithNewUser().Apply(ctx, o)
+	}
+
+	var rel0 *models.User
+
+	if o.r.User.o.alreadyPersisted {
+		rel0 = o.r.User.o.Build()
+	} else {
+		rel0, err = o.r.User.o.Create(ctx, exec)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	opt.UserID = omit.From(rel0.ID)
+
 	m, err := models.AuthTokens.Insert(opt).One(ctx, exec)
 	if err != nil {
 		return nil, err
 	}
+
+	m.R.User = rel0
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
 		return nil, err
@@ -334,14 +347,14 @@ func (m authTokenMods) RandomID(f *faker.Faker) AuthTokenMod {
 }
 
 // Set the model columns to this value
-func (m authTokenMods) UserID(val null.Val[int64]) AuthTokenMod {
+func (m authTokenMods) UserID(val int64) AuthTokenMod {
 	return AuthTokenModFunc(func(_ context.Context, o *AuthTokenTemplate) {
-		o.UserID = func() null.Val[int64] { return val }
+		o.UserID = func() int64 { return val }
 	})
 }
 
 // Set the Column from the function
-func (m authTokenMods) UserIDFunc(f func() null.Val[int64]) AuthTokenMod {
+func (m authTokenMods) UserIDFunc(f func() int64) AuthTokenMod {
 	return AuthTokenModFunc(func(_ context.Context, o *AuthTokenTemplate) {
 		o.UserID = f
 	})
@@ -356,45 +369,23 @@ func (m authTokenMods) UnsetUserID() AuthTokenMod {
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
-// The generated value is sometimes null
 func (m authTokenMods) RandomUserID(f *faker.Faker) AuthTokenMod {
 	return AuthTokenModFunc(func(_ context.Context, o *AuthTokenTemplate) {
-		o.UserID = func() null.Val[int64] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_int64(f)
-			return null.From(val)
-		}
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-// The generated value is never null
-func (m authTokenMods) RandomUserIDNotNull(f *faker.Faker) AuthTokenMod {
-	return AuthTokenModFunc(func(_ context.Context, o *AuthTokenTemplate) {
-		o.UserID = func() null.Val[int64] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_int64(f)
-			return null.From(val)
+		o.UserID = func() int64 {
+			return random_int64(f)
 		}
 	})
 }
 
 // Set the model columns to this value
-func (m authTokenMods) Type(val null.Val[string]) AuthTokenMod {
+func (m authTokenMods) Type(val enums.AuthTokenTypes) AuthTokenMod {
 	return AuthTokenModFunc(func(_ context.Context, o *AuthTokenTemplate) {
-		o.Type = func() null.Val[string] { return val }
+		o.Type = func() enums.AuthTokenTypes { return val }
 	})
 }
 
 // Set the Column from the function
-func (m authTokenMods) TypeFunc(f func() null.Val[string]) AuthTokenMod {
+func (m authTokenMods) TypeFunc(f func() enums.AuthTokenTypes) AuthTokenMod {
 	return AuthTokenModFunc(func(_ context.Context, o *AuthTokenTemplate) {
 		o.Type = f
 	})
@@ -409,45 +400,23 @@ func (m authTokenMods) UnsetType() AuthTokenMod {
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
-// The generated value is sometimes null
 func (m authTokenMods) RandomType(f *faker.Faker) AuthTokenMod {
 	return AuthTokenModFunc(func(_ context.Context, o *AuthTokenTemplate) {
-		o.Type = func() null.Val[string] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_string(f, "20")
-			return null.From(val)
-		}
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-// The generated value is never null
-func (m authTokenMods) RandomTypeNotNull(f *faker.Faker) AuthTokenMod {
-	return AuthTokenModFunc(func(_ context.Context, o *AuthTokenTemplate) {
-		o.Type = func() null.Val[string] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_string(f, "20")
-			return null.From(val)
+		o.Type = func() enums.AuthTokenTypes {
+			return random_enums_AuthTokenTypes(f)
 		}
 	})
 }
 
 // Set the model columns to this value
-func (m authTokenMods) Token(val null.Val[string]) AuthTokenMod {
+func (m authTokenMods) Token(val string) AuthTokenMod {
 	return AuthTokenModFunc(func(_ context.Context, o *AuthTokenTemplate) {
-		o.Token = func() null.Val[string] { return val }
+		o.Token = func() string { return val }
 	})
 }
 
 // Set the Column from the function
-func (m authTokenMods) TokenFunc(f func() null.Val[string]) AuthTokenMod {
+func (m authTokenMods) TokenFunc(f func() string) AuthTokenMod {
 	return AuthTokenModFunc(func(_ context.Context, o *AuthTokenTemplate) {
 		o.Token = f
 	})
@@ -462,32 +431,10 @@ func (m authTokenMods) UnsetToken() AuthTokenMod {
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
-// The generated value is sometimes null
 func (m authTokenMods) RandomToken(f *faker.Faker) AuthTokenMod {
 	return AuthTokenModFunc(func(_ context.Context, o *AuthTokenTemplate) {
-		o.Token = func() null.Val[string] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_string(f, "255")
-			return null.From(val)
-		}
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-// The generated value is never null
-func (m authTokenMods) RandomTokenNotNull(f *faker.Faker) AuthTokenMod {
-	return AuthTokenModFunc(func(_ context.Context, o *AuthTokenTemplate) {
-		o.Token = func() null.Val[string] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_string(f, "255")
-			return null.From(val)
+		o.Token = func() string {
+			return random_string(f, "255")
 		}
 	})
 }

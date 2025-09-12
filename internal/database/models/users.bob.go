@@ -33,7 +33,7 @@ type User struct {
 	Password        string              `db:"password" `
 	Email           string              `db:"email" `
 	EmailVerifiedAt null.Val[time.Time] `db:"email_verified_at" `
-	Status          enums.UserStatus    `db:"status" `
+	Status          enums.UserStatuses  `db:"status" `
 	CreatedAt       null.Val[time.Time] `db:"created_at" `
 	UpdatedAt       null.Val[time.Time] `db:"updated_at" `
 	DeletedAt       null.Val[time.Time] `db:"deleted_at" `
@@ -103,16 +103,16 @@ func (userColumns) AliasedAs(alias string) userColumns {
 // All values are optional, and do not have to be set
 // Generated columns are not included
 type UserSetter struct {
-	ID              omit.Val[int64]            `db:"id,pk" `
-	FirstName       omit.Val[string]           `db:"first_name" `
-	LastName        omit.Val[string]           `db:"last_name" `
-	Password        omit.Val[string]           `db:"password" `
-	Email           omit.Val[string]           `db:"email" `
-	EmailVerifiedAt omitnull.Val[time.Time]    `db:"email_verified_at" `
-	Status          omit.Val[enums.UserStatus] `db:"status" `
-	CreatedAt       omitnull.Val[time.Time]    `db:"created_at" `
-	UpdatedAt       omitnull.Val[time.Time]    `db:"updated_at" `
-	DeletedAt       omitnull.Val[time.Time]    `db:"deleted_at" `
+	ID              omit.Val[int64]              `db:"id,pk" `
+	FirstName       omit.Val[string]             `db:"first_name" `
+	LastName        omit.Val[string]             `db:"last_name" `
+	Password        omit.Val[string]             `db:"password" `
+	Email           omit.Val[string]             `db:"email" `
+	EmailVerifiedAt omitnull.Val[time.Time]      `db:"email_verified_at" `
+	Status          omit.Val[enums.UserStatuses] `db:"status" `
+	CreatedAt       omitnull.Val[time.Time]      `db:"created_at" `
+	UpdatedAt       omitnull.Val[time.Time]      `db:"updated_at" `
+	DeletedAt       omitnull.Val[time.Time]      `db:"deleted_at" `
 }
 
 func (s UserSetter) SetColumns() []string {
@@ -607,7 +607,7 @@ func (os UserSlice) FailedLogins(mods ...bob.Mod[*dialect.SelectQuery]) FailedLo
 
 func insertUserAuthTokens0(ctx context.Context, exec bob.Executor, authTokens1 []*AuthTokenSetter, user0 *User) (AuthTokenSlice, error) {
 	for i := range authTokens1 {
-		authTokens1[i].UserID = omitnull.From(user0.ID)
+		authTokens1[i].UserID = omit.From(user0.ID)
 	}
 
 	ret, err := AuthTokens.Insert(bob.ToMods(authTokens1...)).All(ctx, exec)
@@ -620,7 +620,7 @@ func insertUserAuthTokens0(ctx context.Context, exec bob.Executor, authTokens1 [
 
 func attachUserAuthTokens0(ctx context.Context, exec bob.Executor, count int, authTokens1 AuthTokenSlice, user0 *User) (AuthTokenSlice, error) {
 	setter := &AuthTokenSetter{
-		UserID: omitnull.From(user0.ID),
+		UserID: omit.From(user0.ID),
 	}
 
 	err := authTokens1.UpdateAll(ctx, exec, *setter)
@@ -675,7 +675,7 @@ func (user0 *User) AttachAuthTokens(ctx context.Context, exec bob.Executor, rela
 
 func insertUserFailedLogins0(ctx context.Context, exec bob.Executor, failedLogins1 []*FailedLoginSetter, user0 *User) (FailedLoginSlice, error) {
 	for i := range failedLogins1 {
-		failedLogins1[i].UserID = omitnull.From(user0.ID)
+		failedLogins1[i].UserID = omit.From(user0.ID)
 	}
 
 	ret, err := FailedLogins.Insert(bob.ToMods(failedLogins1...)).All(ctx, exec)
@@ -688,7 +688,7 @@ func insertUserFailedLogins0(ctx context.Context, exec bob.Executor, failedLogin
 
 func attachUserFailedLogins0(ctx context.Context, exec bob.Executor, count int, failedLogins1 FailedLoginSlice, user0 *User) (FailedLoginSlice, error) {
 	setter := &FailedLoginSetter{
-		UserID: omitnull.From(user0.ID),
+		UserID: omit.From(user0.ID),
 	}
 
 	err := failedLogins1.UpdateAll(ctx, exec, *setter)
@@ -748,7 +748,7 @@ type userWhere[Q psql.Filterable] struct {
 	Password        psql.WhereMod[Q, string]
 	Email           psql.WhereMod[Q, string]
 	EmailVerifiedAt psql.WhereNullMod[Q, time.Time]
-	Status          psql.WhereMod[Q, enums.UserStatus]
+	Status          psql.WhereMod[Q, enums.UserStatuses]
 	CreatedAt       psql.WhereNullMod[Q, time.Time]
 	UpdatedAt       psql.WhereNullMod[Q, time.Time]
 	DeletedAt       psql.WhereNullMod[Q, time.Time]
@@ -766,7 +766,7 @@ func buildUserWhere[Q psql.Filterable](cols userColumns) userWhere[Q] {
 		Password:        psql.Where[Q, string](cols.Password),
 		Email:           psql.Where[Q, string](cols.Email),
 		EmailVerifiedAt: psql.WhereNull[Q, time.Time](cols.EmailVerifiedAt),
-		Status:          psql.Where[Q, enums.UserStatus](cols.Status),
+		Status:          psql.Where[Q, enums.UserStatuses](cols.Status),
 		CreatedAt:       psql.WhereNull[Q, time.Time](cols.CreatedAt),
 		UpdatedAt:       psql.WhereNull[Q, time.Time](cols.UpdatedAt),
 		DeletedAt:       psql.WhereNull[Q, time.Time](cols.DeletedAt),
@@ -895,10 +895,7 @@ func (os UserSlice) LoadAuthTokens(ctx context.Context, exec bob.Executor, mods 
 
 		for _, rel := range authTokens {
 
-			if !rel.UserID.IsValue() {
-				continue
-			}
-			if !(rel.UserID.IsValue() && o.ID == rel.UserID.MustGet()) {
+			if !(o.ID == rel.UserID) {
 				continue
 			}
 
@@ -959,10 +956,7 @@ func (os UserSlice) LoadFailedLogins(ctx context.Context, exec bob.Executor, mod
 
 		for _, rel := range failedLogins {
 
-			if !rel.UserID.IsValue() {
-				continue
-			}
-			if !(rel.UserID.IsValue() && o.ID == rel.UserID.MustGet()) {
+			if !(o.ID == rel.UserID) {
 				continue
 			}
 

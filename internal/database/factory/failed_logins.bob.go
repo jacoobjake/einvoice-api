@@ -39,7 +39,7 @@ func (mods FailedLoginModSlice) Apply(ctx context.Context, n *FailedLoginTemplat
 // all columns are optional and should be set by mods
 type FailedLoginTemplate struct {
 	ID          func() int64
-	UserID      func() null.Val[int64]
+	UserID      func() int64
 	IPAddress   func() pgtypes.Inet
 	AttemptedAt func() null.Val[time.Time]
 
@@ -70,7 +70,7 @@ func (t FailedLoginTemplate) setModelRels(o *models.FailedLogin) {
 	if t.r.User != nil {
 		rel := t.r.User.o.Build()
 		rel.R.FailedLogins = append(rel.R.FailedLogins, o)
-		o.UserID = null.From(rel.ID) // h2
+		o.UserID = rel.ID // h2
 		o.R.User = rel
 	}
 }
@@ -86,7 +86,7 @@ func (o FailedLoginTemplate) BuildSetter() *models.FailedLoginSetter {
 	}
 	if o.UserID != nil {
 		val := o.UserID()
-		m.UserID = omitnull.FromNull(val)
+		m.UserID = omit.From(val)
 	}
 	if o.IPAddress != nil {
 		val := o.IPAddress()
@@ -150,6 +150,10 @@ func (o FailedLoginTemplate) BuildMany(number int) models.FailedLoginSlice {
 }
 
 func ensureCreatableFailedLogin(m *models.FailedLoginSetter) {
+	if !(m.UserID.IsValue()) {
+		val := random_int64(nil)
+		m.UserID = omit.From(val)
+	}
 	if !(m.IPAddress.IsValue()) {
 		val := random_pgtypes_Inet(nil)
 		m.IPAddress = omit.From(val)
@@ -162,25 +166,6 @@ func ensureCreatableFailedLogin(m *models.FailedLoginSetter) {
 func (o *FailedLoginTemplate) insertOptRels(ctx context.Context, exec bob.Executor, m *models.FailedLogin) error {
 	var err error
 
-	isUserDone, _ := failedLoginRelUserCtx.Value(ctx)
-	if !isUserDone && o.r.User != nil {
-		ctx = failedLoginRelUserCtx.WithValue(ctx, true)
-		if o.r.User.o.alreadyPersisted {
-			m.R.User = o.r.User.o.Build()
-		} else {
-			var rel0 *models.User
-			rel0, err = o.r.User.o.Create(ctx, exec)
-			if err != nil {
-				return err
-			}
-			err = m.AttachUser(ctx, exec, rel0)
-			if err != nil {
-				return err
-			}
-		}
-
-	}
-
 	return err
 }
 
@@ -191,10 +176,29 @@ func (o *FailedLoginTemplate) Create(ctx context.Context, exec bob.Executor) (*m
 	opt := o.BuildSetter()
 	ensureCreatableFailedLogin(opt)
 
+	if o.r.User == nil {
+		FailedLoginMods.WithNewUser().Apply(ctx, o)
+	}
+
+	var rel0 *models.User
+
+	if o.r.User.o.alreadyPersisted {
+		rel0 = o.r.User.o.Build()
+	} else {
+		rel0, err = o.r.User.o.Create(ctx, exec)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	opt.UserID = omit.From(rel0.ID)
+
 	m, err := models.FailedLogins.Insert(opt).One(ctx, exec)
 	if err != nil {
 		return nil, err
 	}
+
+	m.R.User = rel0
 
 	if err := o.insertOptRels(ctx, exec, m); err != nil {
 		return nil, err
@@ -312,14 +316,14 @@ func (m failedLoginMods) RandomID(f *faker.Faker) FailedLoginMod {
 }
 
 // Set the model columns to this value
-func (m failedLoginMods) UserID(val null.Val[int64]) FailedLoginMod {
+func (m failedLoginMods) UserID(val int64) FailedLoginMod {
 	return FailedLoginModFunc(func(_ context.Context, o *FailedLoginTemplate) {
-		o.UserID = func() null.Val[int64] { return val }
+		o.UserID = func() int64 { return val }
 	})
 }
 
 // Set the Column from the function
-func (m failedLoginMods) UserIDFunc(f func() null.Val[int64]) FailedLoginMod {
+func (m failedLoginMods) UserIDFunc(f func() int64) FailedLoginMod {
 	return FailedLoginModFunc(func(_ context.Context, o *FailedLoginTemplate) {
 		o.UserID = f
 	})
@@ -334,32 +338,10 @@ func (m failedLoginMods) UnsetUserID() FailedLoginMod {
 
 // Generates a random value for the column using the given faker
 // if faker is nil, a default faker is used
-// The generated value is sometimes null
 func (m failedLoginMods) RandomUserID(f *faker.Faker) FailedLoginMod {
 	return FailedLoginModFunc(func(_ context.Context, o *FailedLoginTemplate) {
-		o.UserID = func() null.Val[int64] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_int64(f)
-			return null.From(val)
-		}
-	})
-}
-
-// Generates a random value for the column using the given faker
-// if faker is nil, a default faker is used
-// The generated value is never null
-func (m failedLoginMods) RandomUserIDNotNull(f *faker.Faker) FailedLoginMod {
-	return FailedLoginModFunc(func(_ context.Context, o *FailedLoginTemplate) {
-		o.UserID = func() null.Val[int64] {
-			if f == nil {
-				f = &defaultFaker
-			}
-
-			val := random_int64(f)
-			return null.From(val)
+		o.UserID = func() int64 {
+			return random_int64(f)
 		}
 	})
 }

@@ -32,7 +32,7 @@ func main() {
 	}
 }
 
-func initDB(cfg *config.Config) *bob.DB {
+func initDB(cfg *config.Config) bob.DB {
 	dbCfg := cfg.DBConfig
 	db, err := bob.Open(dbCfg.Driver, dbCfg.ConnectionString())
 
@@ -45,5 +45,5 @@ func initDB(cfg *config.Config) *bob.DB {
 	// db.SetMaxIdleConns(25)
 	// db.SetConnMaxLifetime(5 * time.Minute)
 
-	return &db
+	return db
 }

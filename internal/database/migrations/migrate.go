@@ -20,7 +20,7 @@ func RunMigrations(connectionString string) error {
 		return fmt.Errorf("failed to create migrate instance: %w", err)
 	}
 
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+	if err := m.Steps(1); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("migration failed: %w", err)
 	}
 
@@ -37,7 +37,7 @@ func RollbackMigrations(connectionString string) error {
 		return fmt.Errorf("failed to create migrate instance: %w", err)
 	}
 
-	if err := m.Down(); err != nil && err != migrate.ErrNoChange {
+	if err := m.Steps(-1); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("migration failed: %w", err)
 	}
 

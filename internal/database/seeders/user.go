@@ -6,8 +6,8 @@ import (
 
 	"github.com/aarondl/opt/omit"
 	"github.com/jacoobjake/einvoice-api/internal/database/models"
+	"github.com/jacoobjake/einvoice-api/pkg"
 	"github.com/stephenafamo/bob"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // Implement user seeding logic here
@@ -23,10 +23,7 @@ func SeedUsers(db *bob.DB) error {
 // Implement super admin seeding logic here
 func seedSuperAdmin(db *bob.DB) error {
 	ctx := context.Background()
-	pw, err := bcrypt.GenerateFromPassword(
-		[]byte("superadminpassword"),
-		bcrypt.DefaultCost,
-	)
+	pw, err := pkg.HashPassword("superadminpassword")
 
 	if err != nil {
 		return err

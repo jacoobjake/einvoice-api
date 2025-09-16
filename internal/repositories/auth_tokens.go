@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/aarondl/opt/omitnull"
+	"github.com/gofrs/uuid/v5"
 	"github.com/jacoobjake/einvoice-api/internal/database/enums"
 	"github.com/jacoobjake/einvoice-api/internal/database/models"
 	"github.com/stephenafamo/bob"
@@ -52,13 +54,19 @@ func (r *AuthTokenRepository) FindTokenByUserIdAndType(ctx context.Context, user
 }
 
 func (r *AuthTokenRepository) InvalidateActiveTokensByUserID(ctx context.Context, userID int64, tokenType enums.AuthTokenTypes) error {
+	invalidate := models.AuthTokenSetter{
+		ExpireAt: omitnull.From(time.Now()),
+	}
+
 	_, err := AuthTokens.Update(
-		um.Set(AuthTokens.Columns.ExpireAt, psql.Arg(time.Now())),
+		invalidate.UpdateMod(),
 		um.Where(
-			AuthTokens.Columns.UserID.EQ(psql.Arg(userID)),
+			psql.And(
+				AuthTokens.Columns.UserID.EQ(psql.Arg(userID)),
+				AuthTokens.Columns.Type.EQ(psql.Arg(tokenType)),
+				AuthTokens.Columns.ExpireAt.GTE(psql.Arg(time.Now())),
+			),
 		),
-		um.Where(AuthTokens.Columns.Type.EQ(psql.Arg(tokenType))),
-		um.Where(AuthTokens.Columns.ExpireAt.GT(psql.Arg(time.Now()))),
 	).All(ctx, r.db)
 
 	if err != nil {
@@ -66,4 +74,31 @@ func (r *AuthTokenRepository) InvalidateActiveTokensByUserID(ctx context.Context
 	}
 
 	return nil
+}
+
+func (r *AuthTokenRepository) InvalidateActiveTokensBySessionID(ctx context.Context, sessionID uuid.UUID, tokenType enums.AuthTokenTypes) error {
+	invalidate := models.AuthTokenSetter{
+		ExpireAt: omitnull.From(time.Now()),
+	}
+
+	_, err := AuthTokens.Update(
+		invalidate.UpdateMod(),
+		um.Where(
+			psql.And(
+				AuthTokens.Columns.SessionID.EQ(psql.Arg(sessionID)),
+				AuthTokens.Columns.Type.EQ(psql.Arg(tokenType)),
+				AuthTokens.Columns.ExpireAt.GTE(psql.Arg(time.Now())),
+			),
+		),
+	).All(ctx, r.db)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func NewAuthTokenRepository(db bob.Executor) *AuthTokenRepository {
+	return &AuthTokenRepository{db: db}
 }

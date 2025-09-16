@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 
 	"github.com/jacoobjake/einvoice-api/config"
@@ -14,7 +13,6 @@ func main() {
 	cfg := config.Load()
 	dbCfg := cfg.DBConfig
 	connectionString := dbCfg.ConnectionString()
-	fmt.Println(connectionString)
 	direction := flag.String("direction", "up", "Migration direction: up, down or force")
 	forceVersion := flag.Int("version", 0, "Force DB version")
 	flag.Parse()

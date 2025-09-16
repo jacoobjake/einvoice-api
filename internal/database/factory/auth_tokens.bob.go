@@ -11,6 +11,7 @@ import (
 	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
+	"github.com/gofrs/uuid/v5"
 	enums "github.com/jacoobjake/einvoice-api/internal/database/enums"
 	models "github.com/jacoobjake/einvoice-api/internal/database/models"
 	"github.com/jaswdr/faker/v2"
@@ -45,6 +46,7 @@ type AuthTokenTemplate struct {
 	ExpireAt  func() null.Val[time.Time]
 	CreatedAt func() null.Val[time.Time]
 	UpdatedAt func() null.Val[time.Time]
+	SessionID func() null.Val[uuid.UUID]
 
 	r authTokenR
 	f *Factory
@@ -111,6 +113,10 @@ func (o AuthTokenTemplate) BuildSetter() *models.AuthTokenSetter {
 		val := o.UpdatedAt()
 		m.UpdatedAt = omitnull.FromNull(val)
 	}
+	if o.SessionID != nil {
+		val := o.SessionID()
+		m.SessionID = omitnull.FromNull(val)
+	}
 
 	return m
 }
@@ -153,6 +159,9 @@ func (o AuthTokenTemplate) Build() *models.AuthToken {
 	}
 	if o.UpdatedAt != nil {
 		m.UpdatedAt = o.UpdatedAt()
+	}
+	if o.SessionID != nil {
+		m.SessionID = o.SessionID()
 	}
 
 	o.setModelRels(m)
@@ -312,6 +321,7 @@ func (m authTokenMods) RandomizeAllColumns(f *faker.Faker) AuthTokenMod {
 		AuthTokenMods.RandomExpireAt(f),
 		AuthTokenMods.RandomCreatedAt(f),
 		AuthTokenMods.RandomUpdatedAt(f),
+		AuthTokenMods.RandomSessionID(f),
 	}
 }
 
@@ -593,6 +603,59 @@ func (m authTokenMods) RandomUpdatedAtNotNull(f *faker.Faker) AuthTokenMod {
 			}
 
 			val := random_time_Time(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Set the model columns to this value
+func (m authTokenMods) SessionID(val null.Val[uuid.UUID]) AuthTokenMod {
+	return AuthTokenModFunc(func(_ context.Context, o *AuthTokenTemplate) {
+		o.SessionID = func() null.Val[uuid.UUID] { return val }
+	})
+}
+
+// Set the Column from the function
+func (m authTokenMods) SessionIDFunc(f func() null.Val[uuid.UUID]) AuthTokenMod {
+	return AuthTokenModFunc(func(_ context.Context, o *AuthTokenTemplate) {
+		o.SessionID = f
+	})
+}
+
+// Clear any values for the column
+func (m authTokenMods) UnsetSessionID() AuthTokenMod {
+	return AuthTokenModFunc(func(_ context.Context, o *AuthTokenTemplate) {
+		o.SessionID = nil
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is sometimes null
+func (m authTokenMods) RandomSessionID(f *faker.Faker) AuthTokenMod {
+	return AuthTokenModFunc(func(_ context.Context, o *AuthTokenTemplate) {
+		o.SessionID = func() null.Val[uuid.UUID] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_uuid_UUID(f)
+			return null.From(val)
+		}
+	})
+}
+
+// Generates a random value for the column using the given faker
+// if faker is nil, a default faker is used
+// The generated value is never null
+func (m authTokenMods) RandomSessionIDNotNull(f *faker.Faker) AuthTokenMod {
+	return AuthTokenModFunc(func(_ context.Context, o *AuthTokenTemplate) {
+		o.SessionID = func() null.Val[uuid.UUID] {
+			if f == nil {
+				f = &defaultFaker
+			}
+
+			val := random_uuid_UUID(f)
 			return null.From(val)
 		}
 	})

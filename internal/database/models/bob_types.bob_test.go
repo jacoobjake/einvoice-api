@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 
+	"github.com/gofrs/uuid/v5"
 	enums "github.com/jacoobjake/einvoice-api/internal/database/enums"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/types/pgtypes"
@@ -29,6 +30,12 @@ var _ sql.Scanner = (*enums.AuthTokenTypes)(nil)
 
 // Make sure the type enums.AuthTokenTypes satisfies database/sql/driver.Valuer
 var _ driver.Valuer = *new(enums.AuthTokenTypes)
+
+// Make sure the type uuid.UUID satisfies database/sql.Scanner
+var _ sql.Scanner = (*uuid.UUID)(nil)
+
+// Make sure the type uuid.UUID satisfies database/sql/driver.Valuer
+var _ driver.Valuer = *new(uuid.UUID)
 
 // Make sure the type pgtypes.Inet satisfies database/sql.Scanner
 var _ sql.Scanner = (*pgtypes.Inet)(nil)

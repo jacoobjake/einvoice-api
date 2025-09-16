@@ -78,6 +78,15 @@ var AuthTokens = Table[
 			Generated: false,
 			AutoIncr:  false,
 		},
+		SessionID: column{
+			Name:      "session_id",
+			DBType:    "uuid",
+			Default:   "NULL",
+			Comment:   "",
+			Nullable:  true,
+			Generated: false,
+			AutoIncr:  false,
+		},
 	},
 	Indexes: authTokenIndexes{
 		AuthTokensPkey: index{
@@ -126,11 +135,12 @@ type authTokenColumns struct {
 	ExpireAt  column
 	CreatedAt column
 	UpdatedAt column
+	SessionID column
 }
 
 func (c authTokenColumns) AsSlice() []column {
 	return []column{
-		c.ID, c.UserID, c.Type, c.Token, c.ExpireAt, c.CreatedAt, c.UpdatedAt,
+		c.ID, c.UserID, c.Type, c.Token, c.ExpireAt, c.CreatedAt, c.UpdatedAt, c.SessionID,
 	}
 }
 

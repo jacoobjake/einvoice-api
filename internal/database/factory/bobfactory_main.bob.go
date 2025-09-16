@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/aarondl/opt/null"
+	"github.com/gofrs/uuid/v5"
 	enums "github.com/jacoobjake/einvoice-api/internal/database/enums"
 	models "github.com/jacoobjake/einvoice-api/internal/database/models"
 	"github.com/stephenafamo/bob/types/pgtypes"
@@ -49,6 +50,7 @@ func (f *Factory) FromExistingAuthToken(m *models.AuthToken) *AuthTokenTemplate 
 	o.ExpireAt = func() null.Val[time.Time] { return m.ExpireAt }
 	o.CreatedAt = func() null.Val[time.Time] { return m.CreatedAt }
 	o.UpdatedAt = func() null.Val[time.Time] { return m.UpdatedAt }
+	o.SessionID = func() null.Val[uuid.UUID] { return m.SessionID }
 
 	ctx := context.Background()
 	if m.R.User != nil {

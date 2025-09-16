@@ -12,6 +12,7 @@ import (
 	"github.com/aarondl/opt/null"
 	"github.com/aarondl/opt/omit"
 	"github.com/aarondl/opt/omitnull"
+	"github.com/gofrs/uuid/v5"
 	enums "github.com/jacoobjake/einvoice-api/internal/database/enums"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
@@ -34,6 +35,7 @@ type AuthToken struct {
 	ExpireAt  null.Val[time.Time]  `db:"expire_at" `
 	CreatedAt null.Val[time.Time]  `db:"created_at" `
 	UpdatedAt null.Val[time.Time]  `db:"updated_at" `
+	SessionID null.Val[uuid.UUID]  `db:"session_id" `
 
 	R authTokenR `db:"-" `
 }
@@ -56,7 +58,7 @@ type authTokenR struct {
 func buildAuthTokenColumns(alias string) authTokenColumns {
 	return authTokenColumns{
 		ColumnsExpr: expr.NewColumnsExpr(
-			"id", "user_id", "type", "token", "expire_at", "created_at", "updated_at",
+			"id", "user_id", "type", "token", "expire_at", "created_at", "updated_at", "session_id",
 		).WithParent("auth_tokens"),
 		tableAlias: alias,
 		ID:         psql.Quote(alias, "id"),
@@ -66,6 +68,7 @@ func buildAuthTokenColumns(alias string) authTokenColumns {
 		ExpireAt:   psql.Quote(alias, "expire_at"),
 		CreatedAt:  psql.Quote(alias, "created_at"),
 		UpdatedAt:  psql.Quote(alias, "updated_at"),
+		SessionID:  psql.Quote(alias, "session_id"),
 	}
 }
 
@@ -79,6 +82,7 @@ type authTokenColumns struct {
 	ExpireAt   psql.Expression
 	CreatedAt  psql.Expression
 	UpdatedAt  psql.Expression
+	SessionID  psql.Expression
 }
 
 func (c authTokenColumns) Alias() string {
@@ -100,10 +104,11 @@ type AuthTokenSetter struct {
 	ExpireAt  omitnull.Val[time.Time]        `db:"expire_at" `
 	CreatedAt omitnull.Val[time.Time]        `db:"created_at" `
 	UpdatedAt omitnull.Val[time.Time]        `db:"updated_at" `
+	SessionID omitnull.Val[uuid.UUID]        `db:"session_id" `
 }
 
 func (s AuthTokenSetter) SetColumns() []string {
-	vals := make([]string, 0, 7)
+	vals := make([]string, 0, 8)
 	if s.ID.IsValue() {
 		vals = append(vals, "id")
 	}
@@ -124,6 +129,9 @@ func (s AuthTokenSetter) SetColumns() []string {
 	}
 	if !s.UpdatedAt.IsUnset() {
 		vals = append(vals, "updated_at")
+	}
+	if !s.SessionID.IsUnset() {
+		vals = append(vals, "session_id")
 	}
 	return vals
 }
@@ -150,6 +158,9 @@ func (s AuthTokenSetter) Overwrite(t *AuthToken) {
 	if !s.UpdatedAt.IsUnset() {
 		t.UpdatedAt = s.UpdatedAt.MustGetNull()
 	}
+	if !s.SessionID.IsUnset() {
+		t.SessionID = s.SessionID.MustGetNull()
+	}
 }
 
 func (s *AuthTokenSetter) Apply(q *dialect.InsertQuery) {
@@ -158,7 +169,7 @@ func (s *AuthTokenSetter) Apply(q *dialect.InsertQuery) {
 	})
 
 	q.AppendValues(bob.ExpressionFunc(func(ctx context.Context, w io.Writer, d bob.Dialect, start int) ([]any, error) {
-		vals := make([]bob.Expression, 7)
+		vals := make([]bob.Expression, 8)
 		if s.ID.IsValue() {
 			vals[0] = psql.Arg(s.ID.MustGet())
 		} else {
@@ -201,6 +212,12 @@ func (s *AuthTokenSetter) Apply(q *dialect.InsertQuery) {
 			vals[6] = psql.Raw("DEFAULT")
 		}
 
+		if !s.SessionID.IsUnset() {
+			vals[7] = psql.Arg(s.SessionID.MustGetNull())
+		} else {
+			vals[7] = psql.Raw("DEFAULT")
+		}
+
 		return bob.ExpressSlice(ctx, w, d, start, vals, "", ", ", "")
 	}))
 }
@@ -210,7 +227,7 @@ func (s AuthTokenSetter) UpdateMod() bob.Mod[*dialect.UpdateQuery] {
 }
 
 func (s AuthTokenSetter) Expressions(prefix ...string) []bob.Expression {
-	exprs := make([]bob.Expression, 0, 7)
+	exprs := make([]bob.Expression, 0, 8)
 
 	if s.ID.IsValue() {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
@@ -258,6 +275,13 @@ func (s AuthTokenSetter) Expressions(prefix ...string) []bob.Expression {
 		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
 			psql.Quote(append(prefix, "updated_at")...),
 			psql.Arg(s.UpdatedAt),
+		}})
+	}
+
+	if !s.SessionID.IsUnset() {
+		exprs = append(exprs, expr.Join{Sep: " = ", Exprs: []bob.Expression{
+			psql.Quote(append(prefix, "session_id")...),
+			psql.Arg(s.SessionID),
 		}})
 	}
 
@@ -567,6 +591,7 @@ type authTokenWhere[Q psql.Filterable] struct {
 	ExpireAt  psql.WhereNullMod[Q, time.Time]
 	CreatedAt psql.WhereNullMod[Q, time.Time]
 	UpdatedAt psql.WhereNullMod[Q, time.Time]
+	SessionID psql.WhereNullMod[Q, uuid.UUID]
 }
 
 func (authTokenWhere[Q]) AliasedAs(alias string) authTokenWhere[Q] {
@@ -582,6 +607,7 @@ func buildAuthTokenWhere[Q psql.Filterable](cols authTokenColumns) authTokenWher
 		ExpireAt:  psql.WhereNull[Q, time.Time](cols.ExpireAt),
 		CreatedAt: psql.WhereNull[Q, time.Time](cols.CreatedAt),
 		UpdatedAt: psql.WhereNull[Q, time.Time](cols.UpdatedAt),
+		SessionID: psql.WhereNull[Q, uuid.UUID](cols.SessionID),
 	}
 }
 

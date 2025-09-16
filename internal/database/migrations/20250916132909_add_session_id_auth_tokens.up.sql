@@ -1,0 +1,2 @@
+ALTER TABLE auth_tokens
+ADD COLUMN IF NOT EXISTS session_id UUID;

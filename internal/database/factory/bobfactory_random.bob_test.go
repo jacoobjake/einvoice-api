@@ -55,3 +55,14 @@ func TestRandom_time_Time(t *testing.T) {
 		t.Fatalf("random_time_Time() returned the same value twice: %v", val1)
 	}
 }
+
+func TestRandom_uuid_UUID(t *testing.T) {
+	t.Parallel()
+
+	val1 := random_uuid_UUID(nil)
+	val2 := random_uuid_UUID(nil)
+
+	if val1 == val2 {
+		t.Fatalf("random_uuid_UUID() returned the same value twice: %v", val1)
+	}
+}

@@ -33,3 +33,4 @@ go.work.sum
 tmp
 
 bobgen.yaml
+dump.rdb

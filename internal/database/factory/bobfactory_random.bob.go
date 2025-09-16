@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gofrs/uuid/v5"
 	enums "github.com/jacoobjake/einvoice-api/internal/database/enums"
 	"github.com/jaswdr/faker/v2"
 	"github.com/stephenafamo/bob/types/pgtypes"
@@ -82,4 +83,12 @@ func random_time_Time(f *faker.Faker, limits ...string) time.Time {
 	min := time.Now().Add(-year)
 	max := time.Now().Add(year)
 	return f.Time().TimeBetween(min, max)
+}
+
+func random_uuid_UUID(f *faker.Faker, limits ...string) uuid.UUID {
+	if f == nil {
+		f = &defaultFaker
+	}
+
+	return uuid.Must(uuid.NewV4())
 }

@@ -15,9 +15,14 @@ type UserRepository struct {
 	db bob.Executor
 }
 
+func (r *UserRepository) FindById(ctx context.Context, id int64) (*models.User, error) {
+	return models.FindUser(ctx, r.db, id)
+}
+
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models.User, error) {
 	user, err := Users.Query(
 		sm.Where(Users.Columns.Email.EQ(psql.Arg(email))),
+		sm.Where(Users.Columns.DeletedAt.IsNull()),
 	).One(ctx, r.db)
 
 	if err != nil {

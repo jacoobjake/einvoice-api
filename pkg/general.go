@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"regexp"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -52,4 +53,33 @@ func GenerateRandomString(n int) (string, error) {
 	}
 
 	return string(result), nil
+}
+
+func IsPasswordValid(pw string) bool {
+	// Length check
+	if len(pw) < 8 || len(pw) > 32 {
+		return false
+	}
+
+	// At least one lowercase
+	if matched, _ := regexp.MatchString(`[a-z]`, pw); !matched {
+		return false
+	}
+
+	// At least one uppercase
+	if matched, _ := regexp.MatchString(`[A-Z]`, pw); !matched {
+		return false
+	}
+
+	// At least one digit
+	if matched, _ := regexp.MatchString(`[0-9]`, pw); !matched {
+		return false
+	}
+
+	// At least one special character (anything not letter or digit)
+	if matched, _ := regexp.MatchString(`[^A-Za-z0-9]`, pw); !matched {
+		return false
+	}
+
+	return true
 }

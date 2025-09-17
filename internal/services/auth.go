@@ -51,25 +51,34 @@ func (s *AuthService) hashRefreshToken(token string) (string, error) {
 	return hex.EncodeToString(encrypted.Sum(nil)), nil
 }
 
-func (s *AuthService) validateRefreshToken(refreshToken *models.AuthToken, plainToken string) bool {
+func (s *AuthService) validateRefreshToken(ctx context.Context, plainToken string) (*models.AuthToken, error) {
+	encrypted, err := s.hashRefreshToken(plainToken)
+
+	if err != nil {
+		return nil, fmt.Errorf("error hashing token: %w", err)
+	}
+
+	refreshToken, err := s.authRepo.FindByToken(ctx, encrypted)
+
+	if err != nil {
+		return nil, fmt.Errorf("error fetching token: %w", err)
+	}
+
+	if refreshToken == nil {
+		return nil, fmt.Errorf("token not found")
+	}
+
 	if refreshToken.Type != enums.AuthTokenTypesRefresh {
-		return false
+		return nil, fmt.Errorf("invalid token type")
 	}
 
 	expireAt, isset := refreshToken.ExpireAt.Get()
 
 	if !isset || !expireAt.After(time.Now()) {
-		return false
+		return nil, fmt.Errorf("token expired")
 	}
 
-	hashedToken := refreshToken.Token
-	encrypted, err := s.hashRefreshToken(plainToken)
-
-	if err != nil {
-		return false
-	}
-
-	return hashedToken == encrypted
+	return refreshToken, nil
 }
 
 func (s *AuthService) invalidateActiveRefreshTokens(ctx context.Context, sessionId uuid.UUID) error {
@@ -77,7 +86,7 @@ func (s *AuthService) invalidateActiveRefreshTokens(ctx context.Context, session
 	return err
 }
 
-func (s *AuthService) generateRefreshToken(ctx context.Context, user models.User, sessionId uuid.UUID) (string, error) {
+func (s *AuthService) generateRefreshToken(ctx context.Context, user *models.User, sessionId uuid.UUID) (string, error) {
 	err := s.invalidateActiveRefreshTokens(ctx, sessionId)
 	authConfig := s.config.AuthConfig
 
@@ -115,7 +124,7 @@ func (s *AuthService) generateRefreshToken(ctx context.Context, user models.User
 	return refreshToken, nil
 }
 
-func (s *AuthService) generateToken(ctx context.Context, user models.User) (token string, refreshToken string, err error) {
+func (s *AuthService) generateToken(ctx context.Context, user *models.User) (token string, refreshToken string, err error) {
 	var t *jwt.Token
 	authConfig := s.config.AuthConfig
 	key := []byte(authConfig.JWTSecret)
@@ -234,7 +243,7 @@ func (s *AuthService) Token(ctx context.Context, email string, pw string) (rawTo
 		return "", "", fmt.Errorf("password mismatch")
 	}
 	// TODO:  Check failed login attempts
-	rawToken, refreshToken, err = s.generateToken(ctx, *user)
+	rawToken, refreshToken, err = s.generateToken(ctx, user)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to generate token: %w", err)
 	}
@@ -279,25 +288,24 @@ func (s *AuthService) RevokeToken(ctx context.Context, token string) error {
 	return nil
 }
 
-func (s *AuthService) RefreshToken(ctx context.Context, email string, refreshToken string) (rawToken string, newRefreshToken string, err error) {
-	user, err := s.userRepo.FindByEmail(ctx, email)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to find user")
+func (s *AuthService) RefreshToken(ctx context.Context, rtstr string) (rawToken string, newRefreshToken string, err error) {
+	rt, err := s.validateRefreshToken(ctx, rtstr)
+
+	if err != nil || rt == nil {
+		return "", "", fmt.Errorf("invalid refresh token: %w", err)
 	}
-	if user == nil {
-		return "", "", fmt.Errorf("user not found")
+
+	user, err := s.userRepo.FindById(ctx, rt.UserID)
+
+	if err != nil || user == nil {
+		return "", "", fmt.Errorf("user not found: %w", err)
 	}
-	storedToken, err := s.authRepo.FindTokenByUserIdAndType(ctx, user.ID, enums.AuthTokenTypesRefresh)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to find refresh token")
+
+	if !s.isActiveUser(user) {
+		return "", "", fmt.Errorf("inactive user")
 	}
-	if storedToken == nil || storedToken.UserID != user.ID {
-		return "", "", fmt.Errorf("refresh token not found or does not belong to user")
-	}
-	if !s.validateRefreshToken(storedToken, refreshToken) {
-		return "", "", fmt.Errorf("refresh token validation failed")
-	}
-	rawToken, newRefreshToken, err = s.generateToken(ctx, *user)
+
+	rawToken, newRefreshToken, err = s.generateToken(ctx, user)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to generate new token")
 	}

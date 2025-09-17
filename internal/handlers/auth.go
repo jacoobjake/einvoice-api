@@ -63,10 +63,51 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 			Success: false,
 			Message: "an error occurred while logging out",
 		})
+		return
 	}
+
 	c.JSON(http.StatusOK, response.JSONApiResponse{
 		Success: true,
 		Message: "logged out successfully",
+	})
+}
+
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+func (h *AuthHandler) RefreshToken(c *gin.Context) {
+	var req RefreshTokenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Println("Error binding JSON:", err.Error())
+		c.JSON(http.StatusUnprocessableEntity, response.JSONApiResponse{
+			Success:          false,
+			Code:             http.StatusUnprocessableEntity,
+			Message:          "invalid request data",
+			ValidationErrors: pkgError.FormatValidationError(err),
+		})
+		return
+	}
+
+	token, refreshToken, err := h.AuthService.RefreshToken(c.Request.Context(), req.RefreshToken)
+
+	if err != nil {
+		log.Println("Error refreshing token:", err.Error())
+		c.JSON(http.StatusUnauthorized, response.JSONApiResponse{
+			Success: false,
+			Code:    http.StatusUnauthorized,
+			Message: "invalid credentials",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, response.JSONApiResponse{
+		Success: true,
+		Message: "token refreshed successfully",
+		Data: gin.H{
+			"token":         token,
+			"refresh_token": refreshToken,
+		},
 	})
 }
 

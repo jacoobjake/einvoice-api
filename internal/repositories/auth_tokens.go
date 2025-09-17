@@ -8,6 +8,7 @@ import (
 	"github.com/gofrs/uuid/v5"
 	"github.com/jacoobjake/einvoice-api/internal/database/enums"
 	"github.com/jacoobjake/einvoice-api/internal/database/models"
+	"github.com/pkg/errors"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/sm"
@@ -23,7 +24,7 @@ type AuthTokenRepository struct {
 func (r *AuthTokenRepository) Create(ctx context.Context, token *models.AuthTokenSetter) (*models.AuthToken, error) {
 	createdToken, err := AuthTokens.Insert(token).One(ctx, r.db)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error inserting auth_tokens")
 	}
 	return createdToken, nil
 }
@@ -34,7 +35,7 @@ func (r *AuthTokenRepository) FindByToken(ctx context.Context, token string) (*m
 	).One(ctx, r.db)
 
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error fetching token")
 	}
 
 	return authToken, nil
@@ -47,7 +48,7 @@ func (r *AuthTokenRepository) FindTokenByUserIdAndType(ctx context.Context, user
 	).One(ctx, r.db)
 
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error fetching token")
 	}
 
 	return authToken, nil
@@ -70,7 +71,7 @@ func (r *AuthTokenRepository) InvalidateActiveTokensByUserID(ctx context.Context
 	).All(ctx, r.db)
 
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error executing invalidate token query")
 	}
 
 	return nil
@@ -93,7 +94,7 @@ func (r *AuthTokenRepository) InvalidateActiveTokensBySessionID(ctx context.Cont
 	).All(ctx, r.db)
 
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error executing invalidate token query")
 	}
 
 	return nil

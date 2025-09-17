@@ -2,10 +2,10 @@ package pkg
 
 import (
 	"crypto/rand"
-	"fmt"
 	"math/big"
 	"regexp"
 
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -18,7 +18,7 @@ func ComparePassword(hashedPw []byte, password []byte) error {
 func HashPassword(password string) ([]byte, error) {
 	hashedPw, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error encrypting password")
 	}
 	return hashedPw, nil
 }
@@ -26,12 +26,12 @@ func HashPassword(password string) ([]byte, error) {
 func GenerateAndHashPassword(length int) (string, []byte, error) {
 	password, err := GenerateRandomString(length)
 	if err != nil {
-		return "", nil, err
+		return "", nil, errors.Wrap(err, "error generating random password string")
 	}
 
 	hashedPw, err := HashPassword(password)
 	if err != nil {
-		return "", nil, err
+		return "", nil, errors.Wrap(err, "error hashing password")
 	}
 
 	return password, hashedPw, nil
@@ -39,7 +39,7 @@ func GenerateAndHashPassword(length int) (string, []byte, error) {
 
 func GenerateRandomString(n int) (string, error) {
 	if n <= 0 {
-		return "", fmt.Errorf("invalid length")
+		return "", errors.New("invalid string length")
 	}
 
 	result := make([]byte, n)
@@ -47,7 +47,7 @@ func GenerateRandomString(n int) (string, error) {
 		// Pick a random index
 		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(stringChars))))
 		if err != nil {
-			return "", err
+			return "", errors.Wrap(err, "error genering random index")
 		}
 		result[i] = stringChars[num.Int64()]
 	}

@@ -22,7 +22,7 @@ type LoginRequest struct {
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Println("Error binding JSON:", err.Error())
+		log.Println("Error binding JSON:", err)
 		c.JSON(http.StatusUnprocessableEntity, response.JSONApiResponse{
 			Success:          false,
 			Code:             http.StatusUnprocessableEntity,
@@ -35,7 +35,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	token, refreshToken, err := h.AuthService.Token(c.Request.Context(), req.Email, req.Password)
 
 	if err != nil {
-		log.Println("Error during login:", err.Error())
+		log.Println("Error during login:", err)
 		c.JSON(http.StatusUnauthorized, response.JSONApiResponse{
 			Success: false,
 			Code:    http.StatusUnauthorized,
@@ -59,6 +59,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	err := h.AuthService.RevokeToken(c, token)
 
 	if err != nil {
+		log.Println("error revoking token", err)
 		c.JSON(http.StatusInternalServerError, response.JSONApiResponse{
 			Success: false,
 			Message: "an error occurred while logging out",
@@ -79,7 +80,7 @@ type RefreshTokenRequest struct {
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	var req RefreshTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Println("Error binding JSON:", err.Error())
+		log.Println("Error binding JSON:", err)
 		c.JSON(http.StatusUnprocessableEntity, response.JSONApiResponse{
 			Success:          false,
 			Code:             http.StatusUnprocessableEntity,
@@ -92,7 +93,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	token, refreshToken, err := h.AuthService.RefreshToken(c.Request.Context(), req.RefreshToken)
 
 	if err != nil {
-		log.Println("Error refreshing token:", err.Error())
+		log.Println("Error refreshing token:", err)
 		c.JSON(http.StatusUnauthorized, response.JSONApiResponse{
 			Success: false,
 			Code:    http.StatusUnauthorized,

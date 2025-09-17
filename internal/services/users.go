@@ -6,6 +6,7 @@ import (
 	"github.com/jacoobjake/einvoice-api/internal/database/models"
 	"github.com/jacoobjake/einvoice-api/internal/repositories"
 	"github.com/jacoobjake/einvoice-api/pkg"
+	"github.com/pkg/errors"
 )
 
 type UserService struct {
@@ -22,7 +23,7 @@ func (s *UserService) CreateUser(ctx context.Context, user models.UserSetter) (*
 		// Generate random password and hash it
 		randPw, hashedPw, err := pkg.GenerateAndHashPassword(12)
 		if err != nil {
-			return nil, "", err
+			return nil, "", errors.Wrap(err, "error generating random password")
 		}
 		plainPw = randPw
 		user.Password.Set(string(hashedPw))
@@ -30,14 +31,14 @@ func (s *UserService) CreateUser(ctx context.Context, user models.UserSetter) (*
 		// Hash the provided password
 		hashedPw, err := pkg.HashPassword(pw)
 		if err != nil {
-			return nil, "", err
+			return nil, "", errors.Wrap(err, "error hashing password")
 		}
 		user.Password.Set(string(hashedPw))
 	}
 
 	createdUser, err := s.repo.Create(ctx, &user)
 	if err != nil {
-		return nil, "", err
+		return nil, "", errors.Wrap(err, "error creating user record")
 	}
 	return createdUser, plainPw, nil
 }

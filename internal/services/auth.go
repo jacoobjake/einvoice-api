@@ -18,6 +18,7 @@ import (
 	"github.com/jacoobjake/einvoice-api/internal/repositories"
 	"github.com/jacoobjake/einvoice-api/pkg"
 	"github.com/jacoobjake/einvoice-api/pkg/redisclient"
+	"github.com/pkg/errors"
 )
 
 type AuthService struct {
@@ -45,7 +46,7 @@ func (s *AuthService) hashRefreshToken(token string) (string, error) {
 	_, err := encrypted.Write([]byte(token))
 
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "error encrypting token")
 	}
 
 	return hex.EncodeToString(encrypted.Sum(nil)), nil
@@ -55,27 +56,27 @@ func (s *AuthService) validateRefreshToken(ctx context.Context, plainToken strin
 	encrypted, err := s.hashRefreshToken(plainToken)
 
 	if err != nil {
-		return nil, fmt.Errorf("error hashing token: %w", err)
+		return nil, errors.Wrap(err, "error hashing token")
 	}
 
 	refreshToken, err := s.authRepo.FindByToken(ctx, encrypted)
 
 	if err != nil {
-		return nil, fmt.Errorf("error fetching token: %w", err)
+		return nil, errors.Wrap(err, "error fetching token")
 	}
 
 	if refreshToken == nil {
-		return nil, fmt.Errorf("token not found")
+		return nil, errors.New("token not found")
 	}
 
 	if refreshToken.Type != enums.AuthTokenTypesRefresh {
-		return nil, fmt.Errorf("invalid token type")
+		return nil, errors.New("invalid token type")
 	}
 
 	expireAt, isset := refreshToken.ExpireAt.Get()
 
 	if !isset || !expireAt.After(time.Now()) {
-		return nil, fmt.Errorf("token expired")
+		return nil, errors.New("token expired")
 	}
 
 	return refreshToken, nil
@@ -83,7 +84,10 @@ func (s *AuthService) validateRefreshToken(ctx context.Context, plainToken strin
 
 func (s *AuthService) invalidateActiveRefreshTokens(ctx context.Context, sessionId uuid.UUID) error {
 	err := s.authRepo.InvalidateActiveTokensBySessionID(ctx, sessionId, enums.AuthTokenTypesRefresh)
-	return err
+	if err != nil {
+		return errors.Wrap(err, "error invalidating tokens by session id")
+	}
+	return nil
 }
 
 func (s *AuthService) generateRefreshToken(ctx context.Context, user *models.User, sessionId uuid.UUID) (string, error) {
@@ -91,22 +95,23 @@ func (s *AuthService) generateRefreshToken(ctx context.Context, user *models.Use
 	authConfig := s.config.AuthConfig
 
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "error invalidating refresh token")
 	}
 
 	refreshToken, err := pkg.GenerateRandomString(32)
-	duration := time.Duration(authConfig.RefreshExpirationMin) * time.Minute
 
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "error generating raw refresh token")
 	}
 
 	// Store encrypted version in DB
 	hashed, err := s.hashRefreshToken(refreshToken)
 
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "error hashing refresh token")
 	}
+
+	duration := time.Duration(authConfig.RefreshExpirationMin) * time.Minute
 
 	// Store refresh token in DB
 	_, err = s.authRepo.Create(ctx, &models.AuthTokenSetter{
@@ -118,7 +123,7 @@ func (s *AuthService) generateRefreshToken(ctx context.Context, user *models.Use
 	})
 
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "error storing refresh token")
 	}
 
 	return refreshToken, nil
@@ -147,13 +152,13 @@ func (s *AuthService) generateToken(ctx context.Context, user *models.User) (tok
 	signed, err := t.SignedString(key)
 
 	if err != nil {
-		return "", "", err
+		return "", "", errors.Wrap(err, "error signing token")
 	}
 
 	refreshToken, err = s.generateRefreshToken(ctx, user, sessionId)
 
 	if err != nil {
-		return "", "", err
+		return "", "", errors.Wrap(err, "error generating refresh token")
 	}
 
 	return signed, refreshToken, nil
@@ -165,13 +170,13 @@ func (s *AuthService) parseToken(_ context.Context, token string) (claims jwt.Cl
 	}, jwt.WithValidMethods([]string{s.signingMethod.Alg()}))
 
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error parsing jwt claims")
 	}
 
 	claims, ok := parsed.Claims.(*AuthClaims)
 
 	if !ok {
-		return nil, fmt.Errorf("invalid claims")
+		return nil, errors.New("invalid claims")
 	}
 
 	return claims, nil
@@ -181,35 +186,35 @@ func (s *AuthService) verifyJWTToken(ctx context.Context, token string) (*AuthCl
 	claims, err := s.parseToken(ctx, token)
 
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error parsing jwt token when verifying")
 	}
 
 	authClaims, ok := claims.(*AuthClaims)
 
 	if !ok {
-		return nil, fmt.Errorf("invalid claim type")
+		return nil, errors.New("invalid claim type")
 	}
 
 	// Check expiry
 	exp, err := authClaims.GetExpirationTime()
 
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "unable to retrieve token exp")
 	}
 
 	if time.Now().After(exp.Time) {
-		return nil, fmt.Errorf("token expired")
+		return nil, errors.New("token expired")
 	}
 
 	// Check not before
 	nbf, err := authClaims.GetNotBefore()
 
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "unable to retrieve token nbf")
 	}
 
 	if time.Now().Before(nbf.Time) {
-		return nil, fmt.Errorf("token is not valid yet")
+		return nil, errors.New("token is not valid yet")
 	}
 
 	// Check if token is revoked
@@ -217,11 +222,11 @@ func (s *AuthService) verifyJWTToken(ctx context.Context, token string) (*AuthCl
 	revoked, err := s.rdb.Exists(ctx, key)
 
 	if err != nil {
-		return nil, fmt.Errorf("error reading key: %w", err)
+		return nil, errors.Wrapf(err, "error reading key: %s", key)
 	}
 
 	if revoked {
-		return nil, fmt.Errorf("token revoked")
+		return nil, errors.New("token revoked")
 	}
 
 	return authClaims, nil
@@ -232,20 +237,17 @@ func (s *AuthService) isActiveUser(user *models.User) bool {
 }
 
 func (s *AuthService) Token(ctx context.Context, email string, pw string) (rawToken string, refreshToken string, err error) {
-	user, err := s.userRepo.FindByEmail(ctx, email)
+	user, err := s.userRepo.FindByEmailOrFail(ctx, email)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to find user: %w", err)
-	}
-	if user == nil {
-		return "", "", fmt.Errorf("user not found")
+		return "", "", errors.Wrap(err, "error fetching user")
 	}
 	if err := pkg.ComparePassword([]byte(user.Password), []byte(pw)); err != nil {
-		return "", "", fmt.Errorf("password mismatch")
+		return "", "", errors.New("password mismatch")
 	}
 	// TODO:  Check failed login attempts
 	rawToken, refreshToken, err = s.generateToken(ctx, user)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to generate token: %w", err)
+		return "", "", errors.Wrap(err, "failed to generate token")
 	}
 	return rawToken, refreshToken, nil
 }
@@ -256,7 +258,7 @@ func (s *AuthService) RevokeToken(ctx context.Context, token string) error {
 	exists, err := s.rdb.Exists(ctx, key)
 
 	if err != nil {
-		return fmt.Errorf("failed to read key: %w", err)
+		return errors.Wrapf(err, "failed to read key: %s", key)
 	}
 
 	// Only revoke if not already revoked
@@ -267,13 +269,13 @@ func (s *AuthService) RevokeToken(ctx context.Context, token string) error {
 	err = s.rdb.Set(ctx, key, true, time.Duration(15*time.Minute))
 
 	if err != nil {
-		return fmt.Errorf("failed to write key: %w", err)
+		return errors.Wrapf(err, "failed to write key: %s", key)
 	}
 
 	claims, err := s.parseToken(ctx, token)
 
 	if err != nil {
-		return fmt.Errorf("error parsing token: %w", err)
+		return errors.Wrap(err, "error parsing token")
 	}
 
 	authClaims := claims.(*AuthClaims)
@@ -282,7 +284,7 @@ func (s *AuthService) RevokeToken(ctx context.Context, token string) error {
 	err = s.invalidateActiveRefreshTokens(ctx, authClaims.SessionID)
 
 	if err != nil {
-		return fmt.Errorf("error invalidating refresh token: %w", err)
+		return errors.Wrap(err, "error invalidating refresh token while revoking")
 	}
 
 	return nil
@@ -291,23 +293,27 @@ func (s *AuthService) RevokeToken(ctx context.Context, token string) error {
 func (s *AuthService) RefreshToken(ctx context.Context, rtstr string) (rawToken string, newRefreshToken string, err error) {
 	rt, err := s.validateRefreshToken(ctx, rtstr)
 
-	if err != nil || rt == nil {
-		return "", "", fmt.Errorf("invalid refresh token: %w", err)
+	if err != nil {
+		return "", "", errors.Wrap(err, "invalid refresh token")
 	}
 
-	user, err := s.userRepo.FindById(ctx, rt.UserID)
+	if rt == nil {
+		return "", "", errors.New("refresh token not found")
+	}
 
-	if err != nil || user == nil {
-		return "", "", fmt.Errorf("user not found: %w", err)
+	user, err := s.userRepo.FindByIdOrFail(ctx, rt.UserID)
+
+	if err != nil {
+		return "", "", errors.Wrap(err, "error fetching user")
 	}
 
 	if !s.isActiveUser(user) {
-		return "", "", fmt.Errorf("inactive user")
+		return "", "", errors.New("inactive user")
 	}
 
 	rawToken, newRefreshToken, err = s.generateToken(ctx, user)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to generate new token")
+		return "", "", errors.Wrap(err, "failed to generate new token")
 	}
 	return rawToken, newRefreshToken, nil
 }
@@ -316,17 +322,17 @@ func (s *AuthService) VerifyToken(ctx context.Context, token string) (*models.Us
 	claims, err := s.verifyJWTToken(ctx, token)
 
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error verifying jwt token")
 	}
 
-	user, err := s.userRepo.FindById(ctx, claims.UserID)
+	user, err := s.userRepo.FindByIdOrFail(ctx, claims.UserID)
 
 	if err != nil {
-		return nil, fmt.Errorf("invalid claim user id: %d", claims.UserID)
+		return nil, errors.Wrap(err, "error fetching user")
 	}
 
 	if !s.isActiveUser(user) {
-		return nil, fmt.Errorf("user account inactive")
+		return nil, errors.New("user account inactive")
 	}
 
 	return user, nil

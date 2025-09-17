@@ -38,6 +38,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
+	github.com/pkg/errors v0.9.1
 	github.com/qdm12/reprint v0.0.0-20200326205758-722754a53494 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/stephenafamo/scan v0.7.0 // indirect

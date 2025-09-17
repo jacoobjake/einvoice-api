@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"log"
 	"net/http"
 	"strings"
 
@@ -28,6 +29,7 @@ func AuthMiddleware(authService *services.AuthService) gin.HandlerFunc {
 		user, err := authService.VerifyToken(c.Request.Context(), token)
 
 		if err != nil {
+			log.Println("error verifying token", err)
 			c.JSON(http.StatusUnauthorized, response.JSONApiResponse{
 				Success: false,
 				Message: "Invalid token",

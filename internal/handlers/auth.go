@@ -8,6 +8,7 @@ import (
 	"github.com/jacoobjake/einvoice-api/internal/services"
 	pkgError "github.com/jacoobjake/einvoice-api/pkg/error"
 	"github.com/jacoobjake/einvoice-api/pkg/response"
+	"github.com/pkg/errors"
 )
 
 type AuthHandler struct {
@@ -36,10 +37,19 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	if err != nil {
 		log.Println("Error during login:", err)
+
+		var msg string
+		cause := errors.Cause(err)
+		switch cause.(type) {
+		case pkgError.MaxLoginAttemptError:
+			msg = cause.Error()
+		default:
+			msg = "invalid credentials"
+		}
 		c.JSON(http.StatusUnauthorized, response.JSONApiResponse{
 			Success: false,
 			Code:    http.StatusUnauthorized,
-			Message: "invalid credentials",
+			Message: msg,
 		})
 		return
 	}

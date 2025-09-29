@@ -2,10 +2,19 @@ package error
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 
 	"github.com/go-playground/validator/v10"
 )
+
+type MaxLoginAttemptError struct {
+	MaxAttempts int `json:"max_attempts"`
+}
+
+func (e MaxLoginAttemptError) Error() string {
+	return fmt.Sprintf("exceeded maximum login attempts of %d times", e.MaxAttempts)
+}
 
 type ValidationError struct {
 	Field   string `json:"field"`

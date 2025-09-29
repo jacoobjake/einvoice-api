@@ -17,6 +17,7 @@ import (
 	"github.com/jacoobjake/einvoice-api/internal/database/models"
 	"github.com/jacoobjake/einvoice-api/internal/repositories"
 	"github.com/jacoobjake/einvoice-api/pkg"
+	pkgErr "github.com/jacoobjake/einvoice-api/pkg/error"
 	"github.com/jacoobjake/einvoice-api/pkg/redisclient"
 	"github.com/pkg/errors"
 )
@@ -24,6 +25,7 @@ import (
 type AuthService struct {
 	authRepo      *repositories.AuthTokenRepository
 	userRepo      *repositories.UserRepository
+	flRepo        *repositories.FailedLoginRepository
 	config        *config.Config
 	signingMethod jwt.SigningMethod
 	rdb           *redisclient.RedisClient
@@ -236,15 +238,45 @@ func (s *AuthService) isActiveUser(user *models.User) bool {
 	return user.DeletedAt.IsNull() && user.Status == enums.UserStatusesActive
 }
 
+func (s *AuthService) captureFailedLogin(ctx context.Context, user *models.User) (*models.User, error) {
+	_, err := s.flRepo.CaptureFailedLogin(ctx, user.ID)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "error created failed login record")
+	}
+
+	return user, nil
+}
+
+func (s *AuthService) reachMaxLoginAttempts(ctx context.Context, user *models.User) error {
+	failedLogins, err := s.flRepo.GetFailedLoginCountByUserId(ctx, user.ID)
+	max := s.config.AuthConfig.MaxFailedLoginAttempts
+
+	if err != nil {
+		return errors.Wrap(err, "error fetching user max login attempts")
+	}
+
+	if failedLogins >= int64(max) {
+		return pkgErr.MaxLoginAttemptError{MaxAttempts: max}
+	}
+
+	return nil
+}
+
 func (s *AuthService) Token(ctx context.Context, email string, pw string) (rawToken string, refreshToken string, err error) {
 	user, err := s.userRepo.FindByEmailOrFail(ctx, email)
 	if err != nil {
 		return "", "", errors.Wrap(err, "error fetching user")
 	}
+	// Check max login attempts
+	if err := s.reachMaxLoginAttempts(ctx, user); err != nil {
+		return "", "", errors.Wrap(err, "Error validating max login attempts")
+	}
 	if err := pkg.ComparePassword([]byte(user.Password), []byte(pw)); err != nil {
+		// Capture failed logins
+		s.captureFailedLogin(ctx, user)
 		return "", "", errors.New("password mismatch")
 	}
-	// TODO:  Check failed login attempts
 	rawToken, refreshToken, err = s.generateToken(ctx, user)
 	if err != nil {
 		return "", "", errors.Wrap(err, "failed to generate token")
@@ -341,12 +373,14 @@ func (s *AuthService) VerifyToken(ctx context.Context, token string) (*models.Us
 func NewAuthService(
 	authRepo *repositories.AuthTokenRepository,
 	userRepo *repositories.UserRepository,
+	flRepo *repositories.FailedLoginRepository,
 	config *config.Config,
 	rdb *redisclient.RedisClient,
 ) *AuthService {
 	return &AuthService{
 		authRepo:      authRepo,
 		userRepo:      userRepo,
+		flRepo:        flRepo,
 		config:        config,
 		signingMethod: jwt.SigningMethodHS256,
 		rdb:           rdb,

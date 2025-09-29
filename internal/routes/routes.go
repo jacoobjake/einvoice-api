@@ -5,6 +5,7 @@ import (
 	"github.com/jacoobjake/einvoice-api/config"
 	"github.com/jacoobjake/einvoice-api/internal/handlers"
 	"github.com/jacoobjake/einvoice-api/internal/repositories"
+	"github.com/jacoobjake/einvoice-api/internal/routes/middlewares"
 	"github.com/jacoobjake/einvoice-api/internal/services"
 	"github.com/jacoobjake/einvoice-api/pkg/redisclient"
 	"github.com/stephenafamo/bob"
@@ -14,12 +15,18 @@ func RegisterRoutes(r *gin.Engine, db bob.DB, cfg *config.Config, rdb *redisclie
 	// Initialize repositories
 	authTokenRepo := repositories.NewAuthTokenRepository(db)
 	userRepo := repositories.NewUserRepository(db)
+	flRepo := repositories.NewFailedLoginRepository(db)
 
 	// Initialize services
-	authService := services.NewAuthService(authTokenRepo, userRepo, cfg, rdb)
+	authService := services.NewAuthService(authTokenRepo, userRepo, flRepo, cfg, rdb)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
+
+	// Register Global Middlewares
+	r.Use(
+		middlewares.ClientIpMiddleware(), // Set Client IP to context
+	)
 
 	// Register routes
 	apiGroup := r.Group("/api")

@@ -263,6 +263,16 @@ func (s *AuthService) reachMaxLoginAttempts(ctx context.Context, user *models.Us
 	return nil
 }
 
+func (s *AuthService) clearUserFailedLogins(ctx context.Context, user *models.User) error {
+	_, err := s.flRepo.ClearUserFailedLogin(ctx, user.ID)
+
+	if err != nil {
+		return errors.Wrap(err, "error clearing user failed logins")
+	}
+
+	return nil
+}
+
 func (s *AuthService) Token(ctx context.Context, email string, pw string) (rawToken string, refreshToken string, err error) {
 	user, err := s.userRepo.FindByEmailOrFail(ctx, email)
 	if err != nil {
@@ -280,6 +290,10 @@ func (s *AuthService) Token(ctx context.Context, email string, pw string) (rawTo
 	rawToken, refreshToken, err = s.generateToken(ctx, user)
 	if err != nil {
 		return "", "", errors.Wrap(err, "failed to generate token")
+	}
+	// If successfully logged in, clear failed login
+	if err := s.clearUserFailedLogins(ctx, user); err != nil {
+		return "", "", errors.Wrap(err, "error clearing user failed login on successful token generation")
 	}
 	return rawToken, refreshToken, nil
 }

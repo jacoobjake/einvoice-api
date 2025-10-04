@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stephenafamo/bob"
 	"github.com/stephenafamo/bob/dialect/psql"
+	"github.com/stephenafamo/bob/dialect/psql/dm"
 	"github.com/stephenafamo/bob/dialect/psql/sm"
 )
 
@@ -50,6 +51,18 @@ func (r *FailedLoginRepository) GetFailedLoginCountByUserId(ctx context.Context,
 	}
 
 	return failedLogins, nil
+}
+
+func (r *FailedLoginRepository) ClearUserFailedLogin(ctx context.Context, userId int64) (int64, error) {
+	count, err := FailedLogins.Delete(
+		dm.Where(FailedLogins.Columns.UserID.EQ(psql.Arg(userId))),
+	).Exec(ctx, r.db)
+
+	if err != nil {
+		return 0, errors.Wrap(err, "error executing delete failed_logins by user_id")
+	}
+
+	return count, err
 }
 
 func NewFailedLoginRepository(db bob.Executor) *FailedLoginRepository {
